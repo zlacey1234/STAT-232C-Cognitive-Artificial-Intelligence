@@ -72,7 +72,7 @@ class ValueIteration(object):
 
 		stateValues, policyTable, iteration = ValueIteration.value_iteration(self, state_values_init, iteration)
 
-		return [stateValues, policyTable]
+		return([stateValues, policyTable])
 
 	def value_iteration(self, state_values, iteration):
 		"""
