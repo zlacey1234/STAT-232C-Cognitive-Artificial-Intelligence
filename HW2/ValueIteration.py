@@ -11,20 +11,17 @@ Date: April 14th, 2021
 __author__ = 'Zachary Lacey'
 
 import numpy as np
-import time
 
 
 class ValueIteration(object):
 	""" A ValueIteration Class """
-	def __init__(
-			self, transition_table, reward_table, value_table, convergence_tolerance, gamma,
-			use_terminal_state_mode=False, terminal_states_table=None, max_iter=-1):
+	def __init__(self, transitionTable, rewardTable, valueTable, convergenceTolerance, gamma):
 		"""
 		Args:
-			transition_table (datatype: dict): This is a nested dictionary of the state-action-nextstate combinations
-			for transitions that have a non-zero probability. The transition_table has the following structure:
+			transitionTable (datatype: dict): This is a nested dictionary of the state-action-nextstate combinations
+			for transitions that have a non-zero probability. The transitionTable has the following structure:
 
-				transition_table = {state: {action: {nextstate: {probability}}}}  == P(s' | s, a)
+				transitionTable = {state: {action: {nextstate: {probability}}}}  == P(s' | s, a)
 
 				Example:
 				{(0, 0): {(1, 0): {(1, 0): 0.7, (0, 1): 0.2, (0, 0): 0.1}}
@@ -33,41 +30,27 @@ class ValueIteration(object):
 					nextstate (0, 1) [move up]: probability 0.2
 					nextstate (0, 0) [no movement]: probability 0.1}
 
-			reward_table (datatype: dict): This is a nested dictionary of form state-action-nextstate combinations for
-			each corresponding deterministic reward function. The reward_table has the following structure:
+			rewardTable (datatype: dict): This is a nested dictionary of form state-action-nextstate combinations for
+			each corresponding deterministic reward function. The rewardTable has the following structure:
 
-				reward_table = {state: {action: {nextstate: {reward}}}} == R(s', s, a)
+				rewardTable = {state: {action: {nextstate: {reward}}}} == R(s', s, a)
 
-			value_table (datatype: dict): This is a nested dictionary of form state-value that specifies the initialized
-			values of each state. All state values are initialized to zero. The value_table has the following structure:
+			valueTable (datatype: dict): This is a nested dictionary of form state-value that specifies the initialized
+			values of each state. All state values are initialized to zero. The valueTable has the following structure:
 
-				value_table = {state: {value}} == V(s)
+				valueTable = {state: {value}} == V(s)
 
+			convergenceTolerance (datatype: float): A small scalar threshold determining how much error is tolerated
+			in the estimation.
 
-			convergence_tolerance:
 			gamma:
 
-			use_terminal_state_mode (datatype: boolean): This allows the user to specify is there are terminal states.
-			This is useful if terminal states exist since the Value of Terminal States are set to zero.
-
-			terminal_states_table (datatype: dict): This is a dictionary that contains the specified terminal states.
-			The terminal_states_table has the following structure:
-
-				terminal_states_table = {states}
-
-			max_iter (datatype: integer): This allows the user to specify a set maximum iteration index. This is useful
-			if the user wants to break out of the while loop at a specific iteration instead of until convergence.
-
 		"""
-		self.transition_table = transition_table
-		self.reward_table = reward_table
-		self.value_table = value_table
-		self.convergence_tolerance = convergence_tolerance
+		self.transitionTable = transitionTable
+		self.rewardTable = rewardTable
+		self.valueTable = valueTable
+		self.convergenceTolerance = convergenceTolerance
 		self.gamma = gamma
-
-		self.use_terminal_state_mode = use_terminal_state_mode
-		self.terminal_states_table = terminal_states_table
-		self.max_iter = max_iter
 
 	def __call__(self):
 		"""
@@ -78,24 +61,18 @@ class ValueIteration(object):
 
 				state_values = {state: {value}} == V(s)
 
-			policy_table (datatype: dict): This is a nested dictionary of form state-action-probability giving the
+			policyTable (datatype: dict): This is a nested dictionary of form state-action-probability giving the
 			approximate optimal policy of an agent.
 
-				policy_table = {state: {action: {probability}}} == pi(a | s)
+				policyTable = {state: {action: {probability}}} == pi(a | s)
 
 		"""
 		iteration = 0
-		state_values_init = self.value_table.copy()
+		state_values_init = self.valueTable.copy()
 
-		start_time = time.time()
-		state_values, policy_table, iteration = ValueIteration.value_iteration(self, state_values_init, iteration)
+		stateValues, policyTable, iteration = ValueIteration.value_iteration(self, state_values_init, iteration)
 
-		print("--- %s seconds ---" % (time.time() - start_time))
-
-		print('Iterations:')
-		print(iteration)
-
-		return [state_values, policy_table]
+		return [stateValues, policyTable]
 
 	def value_iteration(self, state_values, iteration):
 		"""
@@ -137,20 +114,15 @@ class ValueIteration(object):
 			# Dictionary to store possible state-action values
 			state_action_value_mem = dict()
 
-			states = list(self.transition_table)
+			states = list(self.transitionTable)
 			num_states = len(states)
-
-			terminal_states = None
-
-			if self.use_terminal_state_mode:
-				terminal_states = list(self.terminal_states_table)
 
 			# For each state
 			for s in range(num_states):
 
 				value_scalar = state_values_prev[states[s]]
 
-				actions = list(self.transition_table[states[s]])
+				actions = list(self.transitionTable[states[s]])
 				num_actions = len(actions)
 
 				state_value_sum_per_action = np.zeros((num_actions, 1))
@@ -158,19 +130,12 @@ class ValueIteration(object):
 
 				# For each action
 				for a in range(num_actions):
-					state_prime = list(self.transition_table[states[s]][actions[a]])
+					state_prime = list(self.transitionTable[states[s]][actions[a]])
 					num_states_prime = len(state_prime)
 
-					# If there are any Terminal States
-					if self.use_terminal_state_mode:
-						if states[s] in terminal_states:
-							for sp in range(num_states_prime):
-								# print('Yes')
-								state_values_prev[state_prime[sp]] = 0.0
-
 					state_values_curr[states[s]] = np.sum([
-						self.transition_table[states[s]][actions[a]][state_prime[sp]] * (
-								self.reward_table[states[s]][actions[a]][state_prime[sp]] +
+						self.transitionTable[states[s]][actions[a]][state_prime[sp]] * (
+								self.rewardTable[states[s]][actions[a]][state_prime[sp]] +
 								self.gamma * state_values_prev[state_prime[sp]]
 						) for sp in range(num_states_prime)])
 
@@ -187,11 +152,7 @@ class ValueIteration(object):
 
 			iteration += 1
 
-			if self.max_iter != -1:
-				if iteration >= self.max_iter:
-					break
-
-			if delta < self.convergence_tolerance:
+			if delta < self.convergenceTolerance:
 				break
 		
 		policy_table = ValueIteration.optimal_policy(self, state_action_value_mem)
@@ -217,11 +178,11 @@ class ValueIteration(object):
 		"""
 		policy_table = dict()
 
-		states = list(self.transition_table)
+		states = list(self.transitionTable)
 		num_states = len(states)
 
 		for s in range(num_states):
-			actions = list(self.transition_table[states[s]])
+			actions = list(self.transitionTable[states[s]])
 			num_actions = len(actions)
 
 			state_value_sum_per_action = np.zeros((num_actions, 1))
@@ -259,7 +220,7 @@ def main():
 	to the goal state while avoiding the trap.
 	"""
 
-	transition_table_det = {
+	transitionTableDet = {
 		(0, 0): {(1, 0): {(1, 0): 1}, (0, 1): {(0, 1): 1}, (-1, 0): {(0, 0): 1}, (0, -1): {(0, 0): 1}},
 		(0, 1): {(1, 0): {(1, 1): 1}, (0, 1): {(0, 2): 1}, (-1, 0): {(0, 1): 1}, (0, -1): {(0, 0): 1}},
 		(0, 2): {(1, 0): {(1, 2): 1}, (0, 1): {(0, 3): 1}, (-1, 0): {(0, 2): 1}, (0, -1): {(0, 1): 1}},
@@ -277,7 +238,7 @@ def main():
 		(2, 4): {(1, 0): {(2, 4): 1}, (0, 1): {(2, 4): 1}, (-1, 0): {(1, 4): 1}, (0, -1): {(2, 3): 1}}
 	}
 
-	reward_table_det = {
+	rewardTableDet = {
 		(0, 0): {(1, 0): {(1, 0): -1}, (0, 1): {(0, 1): -1}, (-1, 0): {(0, 0): -1}, (0, -1): {(0, 0): -1}},
 		(0, 1): {(1, 0): {(1, 1): -1}, (0, 1): {(0, 2): -1}, (-1, 0): {(0, 1): -1}, (0, -1): {(0, 0): -1}},
 		(0, 2): {(1, 0): {(1, 2): -1}, (0, 1): {(0, 3): -1}, (-1, 0): {(0, 2): -1}, (0, -1): {(0, 1): -1}},
@@ -295,18 +256,18 @@ def main():
 		(2, 4): {(1, 0): {(2, 4): -1}, (0, 1): {(2, 4): -1}, (-1, 0): {(1, 4): -1}, (0, -1): {(2, 3): -1}}
 	}
 
-	value_table_det = {
+	valueTableDet = {
 		(0, 0): 0, (0, 1): 0, (0, 2): 0, (0, 3): 0, (0, 4): 0,
 		(1, 0): 0, (1, 1): 0, (1, 2): 0, (1, 3): 0, (1, 4): 0,
 		(2, 0): 0, (2, 1): 0, (2, 2): 0, (2, 3): 0, (2, 4): 0}
 
-	# convergence_tolerance = 10e-7
-	# gamma = .9
+	convergenceTolerance = 10e-7
+	gamma = .9
 
 	"""
 	Example 2: Probabilistic Transition
 	"""
-	transition_table = {
+	transitionTable = {
 		(0, 0): {
 			(1, 0): {(1, 0): 0.7, (0, 1): 0.2, (0, 0): 0.1},
 			(0, 1): {(0, 1): 0.7999999999999999, (1, 0): 0.2},
@@ -404,7 +365,7 @@ def main():
 		}
 	}
 
-	reward_table = {
+	rewardTable = {
 		(0, 0): {
 			(1, 0): {(1, 0): -1, (0, 1): -1, (0, 0): -1}, (0, 1): {(0, 1): -1, (1, 0): -1},
 			(-1, 0): {(0, 0): -1, (1, 0): -1, (0, 1): -1}, (0, -1): {(0, 0): -1, (1, 0): -1, (0, 1): -1}
@@ -470,44 +431,35 @@ def main():
 		}
 	}
 
-	value_table = {
+	valueTable = {
 		(0, 0): 0, (0, 1): 0, (0, 2): 0, (0, 3): 0,
 		(1, 0): 0, (1, 1): 0, (1, 2): 0, (1, 3): 0,
 		(2, 0): 0, (2, 1): 0, (2, 2): 0, (2, 3): 0,
 		(3, 0): 0, (3, 1): 0, (3, 2): 0, (3, 3): 0}
 
-	convergence_tolerance = 10e-7
+	convergenceTolerance = 10e-7
 	gamma = .9
 
-	# """
-	# Uncomment to view transition or reward structure in a readable format
-	# """
-	# levelsReward  = ["state", "action", "next state", "reward"]
-	# levelsTransition  = ["state", "action", "next state", "probability"]
-	#
-	# viewDictionaryStructure(transition_table_det, levelsTransition)
-	# print('================================')
-	# viewDictionaryStructure(transition_table, levelsTransition)
-	# # viewDictionaryStructure(reward_table_det, levelsReward)
-	#
+	"""
+		Uncomment to view transition or reward structure in a readable format
 
-	perform_value_iteration = ValueIteration(
-		transition_table_det, reward_table_det, value_table_det, convergence_tolerance, gamma)
-	optimal_values_determinsitic, policy_table_det = perform_value_iteration()
-	print('Example 1: Deterministic Transition\n')
-	print('Optimal Values (Deterministic)')
-	print(optimal_values_determinsitic)
-	print('Optimal Policy (Deterministic)')
-	print(policy_table_det)
+		levelsReward  = ["state", "action", "next state", "reward"]
+		levelsTransition  = ["state", "action", "next state", "probability"]
 
-	print('\n================================\n')
-	perform_value_iteration = ValueIteration(transition_table, reward_table, value_table, convergence_tolerance, gamma)
-	optimal_values, policy_table = perform_value_iteration()
-	print('Example 2: Probabilistic Transition\n')
-	print('Optimal Values (Probabilistic)')
-	print(optimal_values)
-	print('Optimal Policy (Probabilistic)')
-	print(policy_table)
+		viewDictionaryStructure(transition, levelsTransition)
+		viewDictionaryStructure(reward, levelsReward)
+		"""
+
+	performValueIteration = ValueIteration(transitionTableDet, rewardTableDet, valueTableDet, convergenceTolerance,
+										   gamma)
+	optimalValuesDeterminsitic, policyTableDet = performValueIteration()
+	print(optimalValuesDeterminsitic)
+	print(policyTableDet)
+
+	performValueIteration = ValueIteration(transitionTable, rewardTable, valueTable, convergenceTolerance, gamma)
+	optimalValuesDeterminsitic, policyTable = performValueIteration()
+	print(optimalValuesDeterminsitic)
+	print(policyTable)
 	
 
 if __name__ == '__main__':
