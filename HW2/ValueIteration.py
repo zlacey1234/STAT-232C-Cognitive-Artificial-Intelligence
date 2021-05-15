@@ -15,500 +15,502 @@ import time
 
 
 class ValueIteration(object):
-	""" A ValueIteration Class """
-	def __init__(
-			self, transition_table, reward_table, value_table, convergence_tolerance, gamma,
-			use_terminal_state_mode=False, terminal_states_table=None, max_iter=-1):
-		"""
-		Args:
-			transition_table (datatype: dict): This is a nested dictionary of the state-action-nextstate combinations
-			for transitions that have a non-zero probability. The transition_table has the following structure:
+    """ A ValueIteration Class """
 
-				transition_table = {state: {action: {nextstate: {probability}}}}  == P(s' | s, a)
+    def __init__(
+            self, transition_table, reward_table, value_table, convergence_tolerance, gamma,
+            use_terminal_state_mode=False, terminal_states_table=None, max_iter=-1):
+        """
+        Args:
+            transition_table (datatype: dict): This is a nested dictionary of the state-action-nextstate combinations
+            for transitions that have a non-zero probability. The transition_table has the following structure:
 
-				Example:
-				{(0, 0): {(1, 0): {(1, 0): 0.7, (0, 1): 0.2, (0, 0): 0.1}}
-				{state (0, 0) : action (1, 0):
-					nextstate (1, 0) [move right]: probability 0.7
-					nextstate (0, 1) [move up]: probability 0.2
-					nextstate (0, 0) [no movement]: probability 0.1}
+                transition_table = {state: {action: {nextstate: {probability}}}}  == P(s' | s, a)
 
-			reward_table (datatype: dict): This is a nested dictionary of form state-action-nextstate combinations for
-			each corresponding deterministic reward function. The reward_table has the following structure:
+                Example:
+                {(0, 0): {(1, 0): {(1, 0): 0.7, (0, 1): 0.2, (0, 0): 0.1}}
 
-				reward_table = {state: {action: {nextstate: {reward}}}} == R(s', s, a)
+                {state (0, 0) : action (1, 0):
+                    nextstate (1, 0) [move right]: probability 0.7
+                    nextstate (0, 1) [move up]: probability 0.2
+                    nextstate (0, 0) [no movement]: probability 0.1}
 
-			value_table (datatype: dict): This is a nested dictionary of form state-value that specifies the initialized
-			values of each state. All state values are initialized to zero. The value_table has the following structure:
+            reward_table (datatype: dict): This is a nested dictionary of form state-action-nextstate combinations for
+            each corresponding deterministic reward function. The reward_table has the following structure:
 
-				value_table = {state: {value}} == V(s)
+                reward_table = {state: {action: {nextstate: {reward}}}} == R(s', s, a)
 
+            value_table (datatype: dict): This is a nested dictionary of form state-value that specifies the initialized
+            values of each state. All state values are initialized to zero. The value_table has the following structure:
 
-			convergence_tolerance:
-			gamma:
+                value_table = {state: {value}} == V(s)
 
-			use_terminal_state_mode (datatype: boolean): This allows the user to specify is there are terminal states.
-			This is useful if terminal states exist since the Value of Terminal States are set to zero.
+            convergence_tolerance:
 
-			terminal_states_table (datatype: dict): This is a dictionary that contains the specified terminal states.
-			The terminal_states_table has the following structure:
+            gamma:
 
-				terminal_states_table = {states}
+            use_terminal_state_mode (datatype: boolean): This allows the user to specify is there are terminal states.
+            This is useful if terminal states exist since the Value of Terminal States are set to zero.
 
-			max_iter (datatype: integer): This allows the user to specify a set maximum iteration index. This is useful
-			if the user wants to break out of the while loop at a specific iteration instead of until convergence.
+            terminal_states_table (datatype: dict): This is a dictionary that contains the specified terminal states.
+            The terminal_states_table has the following structure:
 
-		"""
-		self.transition_table = transition_table
-		self.reward_table = reward_table
-		self.value_table = value_table
-		self.convergence_tolerance = convergence_tolerance
-		self.gamma = gamma
+                terminal_states_table = {states}
 
-		self.use_terminal_state_mode = use_terminal_state_mode
-		self.terminal_states_table = terminal_states_table
-		self.max_iter = max_iter
+            max_iter (datatype: integer): This allows the user to specify a set maximum iteration index. This is useful
+            if the user wants to break out of the while loop at a specific iteration instead of until convergence.
 
-	def __call__(self):
-		"""
-		Returns:
-			state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
-			state-values of the optimal policy. All state values are initialized to zero. The state_values has the
-			following structure:
+        """
+        self.transition_table = transition_table
+        self.reward_table = reward_table
+        self.value_table = value_table
+        self.convergence_tolerance = convergence_tolerance
+        self.gamma = gamma
 
-				state_values = {state: {value}} == V(s)
+        self.use_terminal_state_mode = use_terminal_state_mode
+        self.terminal_states_table = terminal_states_table
+        self.max_iter = max_iter
 
-			policy_table (datatype: dict): This is a nested dictionary of form state-action-probability giving the
-			approximate optimal policy of an agent.
+    def __call__(self):
+        """
+        Returns:
+            state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
+            state-values of the optimal policy. All state values are initialized to zero. The state_values has the
+            following structure:
 
-				policy_table = {state: {action: {probability}}} == pi(a | s)
+                state_values = {state: {value}} == V(s)
 
-		"""
-		iteration = 0
-		state_values_init = self.value_table.copy()
+            policy_table (datatype: dict): This is a nested dictionary of form state-action-probability giving the
+            approximate optimal policy of an agent.
 
-		start_time = time.time()
-		state_values, policy_table, iteration = ValueIteration.value_iteration(self, state_values_init, iteration)
+                policy_table = {state: {action: {probability}}} == pi(a | s)
 
-		print("--- %s seconds ---" % (time.time() - start_time))
+        """
+        iteration = 0
+        state_values_init = self.value_table.copy()
 
-		print('Iterations:')
-		print(iteration)
+        start_time = time.time()
+        state_values, policy_table, iteration = ValueIteration.value_iteration(self, state_values_init, iteration)
 
-		return [state_values, policy_table]
+        print("--- %s seconds ---" % (time.time() - start_time))
 
-	def value_iteration(self, state_values, iteration):
-		"""
-		Value Iteration Method
+        print('Iterations:')
+        print(iteration)
 
-		This method performs the Value Iteration Algorithm for a 2D Grid World.
+        return [state_values, policy_table]
 
-		Args:
-			state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
-			state-values of the optimal policy. All state values are initialized to zero. This input is the initialized
-			stat-values structure with initialized zeros. The state_values has the following structure:
+    def value_iteration(self, state_values, iteration):
+        """
+        Value Iteration Method
 
-				state_values = {state: {value}} == V(s)
+        This method performs the Value Iteration Algorithm for a 2D Grid World.
 
-			iteration (datatype: integer): This specifies the number of iteration that Value Iteration performs.
+        Args:
+            state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
+            state-values of the optimal policy. All state values are initialized to zero. This input is the initialized
+            stat-values structure with initialized zeros. The state_values has the following structure:
 
-		Returns:
-			state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
-			state-values of the optimal policy. All state values are initialized to zero. The state_values has the
-			following structure:
+                state_values = {state: {value}} == V(s)
 
-				state_values = {state: {value}} == V(s)
+            iteration (datatype: integer): This specifies the number of iteration that Value Iteration performs.
 
-			policy_table (datatype: dict): This is a nested dictionary of form state-action-probability giving the
-			approximate optimal policy of an agent.
+        Returns:
+            state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
+            state-values of the optimal policy. All state values are initialized to zero. The state_values has the
+            following structure:
 
-				policy_table = {state: {action: {probability}}} == pi(a | s)
+                state_values = {state: {value}} == V(s)
 
-			iteration (datatype: integer): This specifies the number of iteration that Value Iteration performs.
+            policy_table (datatype: dict): This is a nested dictionary of form state-action-probability giving the
+            approximate optimal policy of an agent.
 
-		"""
-		while True:
-			delta = 0.0
+                policy_table = {state: {action: {probability}}} == pi(a | s)
 
-			# Initialize a the current and previous state-value tables as copies of the initial state value table.
-			state_values_curr = state_values.copy()
-			state_values_prev = state_values.copy()
+            iteration (datatype: integer): This specifies the number of iteration that Value Iteration performs.
 
-			# Dictionary to store possible state-action values
-			state_action_value_mem = dict()
+        """
+        while True:
+            delta = 0.0
 
-			states = list(self.transition_table)
-			num_states = len(states)
+            # Initialize a the current and previous state-value tables as copies of the initial state value table.
+            state_values_curr = state_values.copy()
+            state_values_prev = state_values.copy()
 
-			terminal_states = None
+            # Dictionary to store possible state-action values
+            state_action_value_mem = dict()
 
-			if self.use_terminal_state_mode:
-				terminal_states = list(self.terminal_states_table)
+            states = list(self.transition_table)
+            num_states = len(states)
 
-			# For each state
-			for s in range(num_states):
+            terminal_states = None
 
-				value_scalar = state_values_prev[states[s]]
+            if self.use_terminal_state_mode:
+                terminal_states = list(self.terminal_states_table)
 
-				actions = list(self.transition_table[states[s]])
-				num_actions = len(actions)
+            # For each state
+            for s in range(num_states):
 
-				state_value_sum_per_action = np.zeros((num_actions, 1))
-				state_value_sum_per_action_mem = dict()
+                value_scalar = state_values_prev[states[s]]
 
-				# For each action
-				for a in range(num_actions):
-					state_prime = list(self.transition_table[states[s]][actions[a]])
-					num_states_prime = len(state_prime)
+                actions = list(self.transition_table[states[s]])
+                num_actions = len(actions)
 
-					# If there are any Terminal States
-					if self.use_terminal_state_mode:
-						if states[s] in terminal_states:
-							for sp in range(num_states_prime):
-								# print('Yes')
-								state_values_prev[state_prime[sp]] = 0.0
+                state_value_sum_per_action = np.zeros((num_actions, 1))
+                state_value_sum_per_action_mem = dict()
 
-					state_values_curr[states[s]] = np.sum([
-						self.transition_table[states[s]][actions[a]][state_prime[sp]] * (
-								self.reward_table[states[s]][actions[a]][state_prime[sp]] +
-								self.gamma * state_values_prev[state_prime[sp]]
-						) for sp in range(num_states_prime)])
+                # For each action
+                for a in range(num_actions):
+                    state_prime = list(self.transition_table[states[s]][actions[a]])
+                    num_states_prime = len(state_prime)
 
-					state_value_sum_per_action[a] = state_values_curr[states[s]]
-					state_value_sum_per_action_mem[actions[a]] = state_values_curr[states[s]]
+                    # If there are any Terminal States
+                    if self.use_terminal_state_mode:
+                        if states[s] in terminal_states:
+                            for sp in range(num_states_prime):
+                                # print('Yes')
+                                state_values_prev[state_prime[sp]] = 0.0
 
-				state_action_value_mem[states[s]] = state_value_sum_per_action_mem
-				max_state_value = np.max(state_value_sum_per_action)
+                    state_values_curr[states[s]] = np.sum([
+                        self.transition_table[states[s]][actions[a]][state_prime[sp]] * (
+                                self.reward_table[states[s]][actions[a]][state_prime[sp]] +
+                                self.gamma * state_values_prev[state_prime[sp]]
+                        ) for sp in range(num_states_prime)])
 
-				# Update the state-value
-				state_values[states[s]] = max_state_value
+                    state_value_sum_per_action[a] = state_values_curr[states[s]]
+                    state_value_sum_per_action_mem[actions[a]] = state_values_curr[states[s]]
 
-				delta = max(delta, abs(value_scalar - state_values[states[s]]))
+                state_action_value_mem[states[s]] = state_value_sum_per_action_mem
+                max_state_value = np.max(state_value_sum_per_action)
 
-			iteration += 1
+                # Update the state-value
+                state_values[states[s]] = max_state_value
 
-			if self.max_iter != -1:
-				if iteration >= self.max_iter:
-					break
+                delta = max(delta, abs(value_scalar - state_values[states[s]]))
 
-			if delta < self.convergence_tolerance:
-				break
-		
-		policy_table = ValueIteration.optimal_policy(self, state_action_value_mem)
+            iteration += 1
 
-		return [state_values, policy_table, iteration]
-	
-	def optimal_policy(self, state_action_value_mem):
-		""" Optimal Policy Method
+            if self.max_iter != -1:
+                if iteration >= self.max_iter:
+                    break
 
-		Args:
-			state_action_value_mem (datatype: dict): This is a nested dictionary of form state-action-value which
-			contains the stored state-action values (aka, Q-Values) for the optimal policy. The state_action_value_mem
-			has the following structure:
+            if delta < self.convergence_tolerance:
+                break
 
-				state_action_value_mem = {state: {action: {value}}} == Q(s, a)
+        policy_table = ValueIteration.optimal_policy(self, state_action_value_mem)
 
-		Returns:
-			policy_table (datatype: dict): This is a nested dictionary of form state-action-probability giving the
-			approximate optimal policy of an agent.
+        return [state_values, policy_table, iteration]
 
-				policy_table = {state: {action: {probability}}} == pi(a | s)
+    def optimal_policy(self, state_action_value_mem):
+        """ Optimal Policy Method
 
-		"""
-		policy_table = dict()
+        Args:
+            state_action_value_mem (datatype: dict): This is a nested dictionary of form state-action-value which
+            contains the stored state-action values (aka, Q-Values) for the optimal policy. The state_action_value_mem
+            has the following structure:
 
-		states = list(self.transition_table)
-		num_states = len(states)
+                state_action_value_mem = {state: {action: {value}}} == Q(s, a)
 
-		for s in range(num_states):
-			actions = list(self.transition_table[states[s]])
-			num_actions = len(actions)
+        Returns:
+            policy_table (datatype: dict): This is a nested dictionary of form state-action-probability giving the
+            approximate optimal policy of an agent.
 
-			state_value_sum_per_action = np.zeros((num_actions, 1))
-			
-			for a in range(num_actions):
-				state_value_sum_per_action[a] = state_action_value_mem[states[s]][actions[a]]
+                policy_table = {state: {action: {probability}}} == pi(a | s)
 
-			max_state_value = np.max(state_value_sum_per_action)
-			max_state_idx = np.argwhere(state_value_sum_per_action.flatten() == max_state_value)
-			num_max_values = len(max_state_idx)
+        """
+        policy_table = dict()
 
-			max_actions = dict()
-			for a in range(num_actions):
-				if a in max_state_idx:
-					max_actions[actions[a]] = 1.0 / num_max_values
+        states = list(self.transition_table)
+        num_states = len(states)
 
-			policy_table[states[s]] = max_actions
-		
-		return policy_table
+        for s in range(num_states):
+            actions = list(self.transition_table[states[s]])
+            num_actions = len(actions)
+
+            state_value_sum_per_action = np.zeros((num_actions, 1))
+
+            for a in range(num_actions):
+                state_value_sum_per_action[a] = state_action_value_mem[states[s]][actions[a]]
+
+            max_state_value = np.max(state_value_sum_per_action)
+            max_state_idx = np.argwhere(state_value_sum_per_action.flatten() == max_state_value)
+            num_max_values = len(max_state_idx)
+
+            max_actions = dict()
+            for a in range(num_actions):
+                if a in max_state_idx:
+                    max_actions[actions[a]] = 1.0 / num_max_values
+
+            policy_table[states[s]] = max_actions
+
+        return policy_table
 
 
 def viewDictionaryStructure(d, levels, indent=0):
-	for key, value in d.items():
-		print('\t' * indent + str(levels[indent]) + ": " + str(key))
-		if isinstance(value, dict):
-			viewDictionaryStructure(value, levels, indent+1)
-		else:
-			print('\t' * (indent+1) + str(levels[indent+1]) + ": " + str(value))
+    for key, value in d.items():
+        print('\t' * indent + str(levels[indent]) + ": " + str(key))
+        if isinstance(value, dict):
+            viewDictionaryStructure(value, levels, indent + 1)
+        else:
+            print('\t' * (indent + 1) + str(levels[indent + 1]) + ": " + str(value))
 
 
 def main():
-	"""
-	Example 1: Deterministic Transition
-	When transitions are deterministic, the optimal policy is always to take the action or actions that move you closer
-	to the goal state while avoiding the trap.
-	"""
+    """
+    Example 1: Deterministic Transition
+    When transitions are deterministic, the optimal policy is always to take the action or actions that move you closer
+    to the goal state while avoiding the trap.
+    """
 
-	transition_table_det = {
-		(0, 0): {(1, 0): {(1, 0): 1}, (0, 1): {(0, 1): 1}, (-1, 0): {(0, 0): 1}, (0, -1): {(0, 0): 1}},
-		(0, 1): {(1, 0): {(1, 1): 1}, (0, 1): {(0, 2): 1}, (-1, 0): {(0, 1): 1}, (0, -1): {(0, 0): 1}},
-		(0, 2): {(1, 0): {(1, 2): 1}, (0, 1): {(0, 3): 1}, (-1, 0): {(0, 2): 1}, (0, -1): {(0, 1): 1}},
-		(0, 3): {(1, 0): {(1, 3): 1}, (0, 1): {(0, 4): 1}, (-1, 0): {(0, 3): 1}, (0, -1): {(0, 2): 1}},
-		(0, 4): {(1, 0): {(1, 4): 1}, (0, 1): {(0, 4): 1}, (-1, 0): {(0, 4): 1}, (0, -1): {(0, 3): 1}},
-		(1, 0): {(1, 0): {(2, 0): 1}, (0, 1): {(1, 1): 1}, (-1, 0): {(0, 0): 1}, (0, -1): {(1, 0): 1}},
-		(1, 1): {(1, 0): {(2, 1): 1}, (0, 1): {(1, 2): 1}, (-1, 0): {(0, 1): 1}, (0, -1): {(1, 0): 1}},
-		(1, 2): {(1, 0): {(2, 2): 1}, (0, 1): {(1, 3): 1}, (-1, 0): {(0, 2): 1}, (0, -1): {(1, 1): 1}},
-		(1, 3): {(1, 0): {(2, 3): 1}, (0, 1): {(1, 4): 1}, (-1, 0): {(0, 3): 1}, (0, -1): {(1, 2): 1}},
-		(1, 4): {(1, 0): {(2, 4): 1}, (0, 1): {(1, 4): 1}, (-1, 0): {(0, 4): 1}, (0, -1): {(1, 3): 1}},
-		(2, 0): {(1, 0): {(2, 0): 1}, (0, 1): {(2, 1): 1}, (-1, 0): {(1, 0): 1}, (0, -1): {(2, 0): 1}},
-		(2, 1): {(1, 0): {(2, 1): 1}, (0, 1): {(2, 2): 1}, (-1, 0): {(1, 1): 1}, (0, -1): {(2, 0): 1}},
-		(2, 2): {(1, 0): {(2, 2): 1}, (0, 1): {(2, 3): 1}, (-1, 0): {(1, 2): 1}, (0, -1): {(2, 1): 1}},
-		(2, 3): {(1, 0): {(2, 3): 1}, (0, 1): {(2, 4): 1}, (-1, 0): {(1, 3): 1}, (0, -1): {(2, 2): 1}},
-		(2, 4): {(1, 0): {(2, 4): 1}, (0, 1): {(2, 4): 1}, (-1, 0): {(1, 4): 1}, (0, -1): {(2, 3): 1}}
-	}
+    transition_table_det = {
+        (0, 0): {(1, 0): {(1, 0): 1}, (0, 1): {(0, 1): 1}, (-1, 0): {(0, 0): 1}, (0, -1): {(0, 0): 1}},
+        (0, 1): {(1, 0): {(1, 1): 1}, (0, 1): {(0, 2): 1}, (-1, 0): {(0, 1): 1}, (0, -1): {(0, 0): 1}},
+        (0, 2): {(1, 0): {(1, 2): 1}, (0, 1): {(0, 3): 1}, (-1, 0): {(0, 2): 1}, (0, -1): {(0, 1): 1}},
+        (0, 3): {(1, 0): {(1, 3): 1}, (0, 1): {(0, 4): 1}, (-1, 0): {(0, 3): 1}, (0, -1): {(0, 2): 1}},
+        (0, 4): {(1, 0): {(1, 4): 1}, (0, 1): {(0, 4): 1}, (-1, 0): {(0, 4): 1}, (0, -1): {(0, 3): 1}},
+        (1, 0): {(1, 0): {(2, 0): 1}, (0, 1): {(1, 1): 1}, (-1, 0): {(0, 0): 1}, (0, -1): {(1, 0): 1}},
+        (1, 1): {(1, 0): {(2, 1): 1}, (0, 1): {(1, 2): 1}, (-1, 0): {(0, 1): 1}, (0, -1): {(1, 0): 1}},
+        (1, 2): {(1, 0): {(2, 2): 1}, (0, 1): {(1, 3): 1}, (-1, 0): {(0, 2): 1}, (0, -1): {(1, 1): 1}},
+        (1, 3): {(1, 0): {(2, 3): 1}, (0, 1): {(1, 4): 1}, (-1, 0): {(0, 3): 1}, (0, -1): {(1, 2): 1}},
+        (1, 4): {(1, 0): {(2, 4): 1}, (0, 1): {(1, 4): 1}, (-1, 0): {(0, 4): 1}, (0, -1): {(1, 3): 1}},
+        (2, 0): {(1, 0): {(2, 0): 1}, (0, 1): {(2, 1): 1}, (-1, 0): {(1, 0): 1}, (0, -1): {(2, 0): 1}},
+        (2, 1): {(1, 0): {(2, 1): 1}, (0, 1): {(2, 2): 1}, (-1, 0): {(1, 1): 1}, (0, -1): {(2, 0): 1}},
+        (2, 2): {(1, 0): {(2, 2): 1}, (0, 1): {(2, 3): 1}, (-1, 0): {(1, 2): 1}, (0, -1): {(2, 1): 1}},
+        (2, 3): {(1, 0): {(2, 3): 1}, (0, 1): {(2, 4): 1}, (-1, 0): {(1, 3): 1}, (0, -1): {(2, 2): 1}},
+        (2, 4): {(1, 0): {(2, 4): 1}, (0, 1): {(2, 4): 1}, (-1, 0): {(1, 4): 1}, (0, -1): {(2, 3): 1}}
+    }
 
-	reward_table_det = {
-		(0, 0): {(1, 0): {(1, 0): -1}, (0, 1): {(0, 1): -1}, (-1, 0): {(0, 0): -1}, (0, -1): {(0, 0): -1}},
-		(0, 1): {(1, 0): {(1, 1): -1}, (0, 1): {(0, 2): -1}, (-1, 0): {(0, 1): -1}, (0, -1): {(0, 0): -1}},
-		(0, 2): {(1, 0): {(1, 2): -1}, (0, 1): {(0, 3): -1}, (-1, 0): {(0, 2): -1}, (0, -1): {(0, 1): -1}},
-		(0, 3): {(1, 0): {(1, 3): -1}, (0, 1): {(0, 4): -1}, (-1, 0): {(0, 3): -1}, (0, -1): {(0, 2): -1}},
-		(0, 4): {(1, 0): {(1, 4): -1}, (0, 1): {(0, 4): -1}, (-1, 0): {(0, 4): -1}, (0, -1): {(0, 3): -1}},
-		(1, 0): {(1, 0): {(2, 0): -1}, (0, 1): {(1, 1): -1}, (-1, 0): {(0, 0): -1}, (0, -1): {(1, 0): -1}},
-		(1, 1): {(1, 0): {(2, 1): 10}, (0, 1): {(1, 2): 10}, (-1, 0): {(0, 1): 10}, (0, -1): {(1, 0): 10}},
-		(1, 2): {(1, 0): {(2, 2): -100}, (0, 1): {(1, 3): -100}, (-1, 0): {(0, 2): -100}, (0, -1): {(1, 1): -100}},
-		(1, 3): {(1, 0): {(2, 3): -1}, (0, 1): {(1, 4): -1}, (-1, 0): {(0, 3): -1}, (0, -1): {(1, 2): -1}},
-		(1, 4): {(1, 0): {(2, 4): -1}, (0, 1): {(1, 4): -1}, (-1, 0): {(0, 4): -1}, (0, -1): {(1, 3): -1}},
-		(2, 0): {(1, 0): {(2, 0): -1}, (0, 1): {(2, 1): -1}, (-1, 0): {(1, 0): -1}, (0, -1): {(2, 0): -1}},
-		(2, 1): {(1, 0): {(2, 1): -1}, (0, 1): {(2, 2): -1}, (-1, 0): {(1, 1): -1}, (0, -1): {(2, 0): -1}},
-		(2, 2): {(1, 0): {(2, 2): -1}, (0, 1): {(2, 3): -1}, (-1, 0): {(1, 2): -1}, (0, -1): {(2, 1): -1}},
-		(2, 3): {(1, 0): {(2, 3): -1}, (0, 1): {(2, 4): -1}, (-1, 0): {(1, 3): -1}, (0, -1): {(2, 2): -1}},
-		(2, 4): {(1, 0): {(2, 4): -1}, (0, 1): {(2, 4): -1}, (-1, 0): {(1, 4): -1}, (0, -1): {(2, 3): -1}}
-	}
+    reward_table_det = {
+        (0, 0): {(1, 0): {(1, 0): -1}, (0, 1): {(0, 1): -1}, (-1, 0): {(0, 0): -1}, (0, -1): {(0, 0): -1}},
+        (0, 1): {(1, 0): {(1, 1): -1}, (0, 1): {(0, 2): -1}, (-1, 0): {(0, 1): -1}, (0, -1): {(0, 0): -1}},
+        (0, 2): {(1, 0): {(1, 2): -1}, (0, 1): {(0, 3): -1}, (-1, 0): {(0, 2): -1}, (0, -1): {(0, 1): -1}},
+        (0, 3): {(1, 0): {(1, 3): -1}, (0, 1): {(0, 4): -1}, (-1, 0): {(0, 3): -1}, (0, -1): {(0, 2): -1}},
+        (0, 4): {(1, 0): {(1, 4): -1}, (0, 1): {(0, 4): -1}, (-1, 0): {(0, 4): -1}, (0, -1): {(0, 3): -1}},
+        (1, 0): {(1, 0): {(2, 0): -1}, (0, 1): {(1, 1): -1}, (-1, 0): {(0, 0): -1}, (0, -1): {(1, 0): -1}},
+        (1, 1): {(1, 0): {(2, 1): 10}, (0, 1): {(1, 2): 10}, (-1, 0): {(0, 1): 10}, (0, -1): {(1, 0): 10}},
+        (1, 2): {(1, 0): {(2, 2): -100}, (0, 1): {(1, 3): -100}, (-1, 0): {(0, 2): -100}, (0, -1): {(1, 1): -100}},
+        (1, 3): {(1, 0): {(2, 3): -1}, (0, 1): {(1, 4): -1}, (-1, 0): {(0, 3): -1}, (0, -1): {(1, 2): -1}},
+        (1, 4): {(1, 0): {(2, 4): -1}, (0, 1): {(1, 4): -1}, (-1, 0): {(0, 4): -1}, (0, -1): {(1, 3): -1}},
+        (2, 0): {(1, 0): {(2, 0): -1}, (0, 1): {(2, 1): -1}, (-1, 0): {(1, 0): -1}, (0, -1): {(2, 0): -1}},
+        (2, 1): {(1, 0): {(2, 1): -1}, (0, 1): {(2, 2): -1}, (-1, 0): {(1, 1): -1}, (0, -1): {(2, 0): -1}},
+        (2, 2): {(1, 0): {(2, 2): -1}, (0, 1): {(2, 3): -1}, (-1, 0): {(1, 2): -1}, (0, -1): {(2, 1): -1}},
+        (2, 3): {(1, 0): {(2, 3): -1}, (0, 1): {(2, 4): -1}, (-1, 0): {(1, 3): -1}, (0, -1): {(2, 2): -1}},
+        (2, 4): {(1, 0): {(2, 4): -1}, (0, 1): {(2, 4): -1}, (-1, 0): {(1, 4): -1}, (0, -1): {(2, 3): -1}}
+    }
 
-	value_table_det = {
-		(0, 0): 0, (0, 1): 0, (0, 2): 0, (0, 3): 0, (0, 4): 0,
-		(1, 0): 0, (1, 1): 0, (1, 2): 0, (1, 3): 0, (1, 4): 0,
-		(2, 0): 0, (2, 1): 0, (2, 2): 0, (2, 3): 0, (2, 4): 0}
+    value_table_det = {
+        (0, 0): 0, (0, 1): 0, (0, 2): 0, (0, 3): 0, (0, 4): 0,
+        (1, 0): 0, (1, 1): 0, (1, 2): 0, (1, 3): 0, (1, 4): 0,
+        (2, 0): 0, (2, 1): 0, (2, 2): 0, (2, 3): 0, (2, 4): 0}
 
-	# convergence_tolerance = 10e-7
-	# gamma = .9
+    # convergence_tolerance = 10e-7
+    # gamma = .9
 
-	"""
-	Example 2: Probabilistic Transition
-	"""
-	transition_table = {
-		(0, 0): {
-			(1, 0): {(1, 0): 0.7, (0, 1): 0.2, (0, 0): 0.1},
-			(0, 1): {(0, 1): 0.7999999999999999, (1, 0): 0.2},
-			(-1, 0): {(0, 0): 0.7, (1, 0): 0.2, (0, 1): 0.1},
-			(0, -1): {(0, 0): 0.7, (1, 0): 0.1, (0, 1): 0.2}
-		},
-		(0, 1): {
-			(1, 0): {(1, 1): 0.7999999999999999, (0, 1): 0.1, (0, 2): 0.1},
-			(0, 1): {(0, 2): 0.7999999999999999, (0, 0): 0.2},
-			(-1, 0): {(0, 1): 0.8999999999999999, (0, 0): 0.1},
-			(0, -1): {(0, 0): 0.7999999999999999, (0, 2): 0.1, (0, 1): 0.1}
-		},
-		(0, 2): {
-			(1, 0): {(1, 2): 0.7999999999999999, (0, 1): 0.2},
-			(0, 1): {(0, 3): 0.7999999999999999, (0, 1): 0.1, (1, 2): 0.1},
-			(-1, 0): {(0, 2): 0.7, (0, 1): 0.1, (1, 2): 0.1, (0, 3): 0.1},
-			(0, -1): {(0, 1): 0.8999999999999999, (0, 3): 0.1}
-		},
-		(0, 3): {
-			(1, 0): {(1, 3): 0.8999999999999999, (0, 2): 0.1},
-			(0, 1): {(0, 3): 0.9999999999999999},
-			(-1, 0): {(0, 3): 0.7999999999999999, (0, 2): 0.1, (1, 3): 0.1},
-			(0, -1): {(0, 2): 0.7999999999999999, (0, 3): 0.2}
-		},
-		(1, 0): {
-			(1, 0): {(2, 0): 0.8999999999999999, (1, 1): 0.1},
-			(0, 1): {(1, 1): 0.8999999999999999, (1, 0): 0.1},
-			(-1, 0): {(0, 0): 0.7, (1, 1): 0.2, (2, 0): 0.1},
-			(0, -1): {(1, 0): 0.7999999999999999, (0, 0): 0.2}
-		},
-		(1, 1): {
-			(1, 0): {(2, 1): 0.7999999999999999, (1, 0): 0.1, (0, 1): 0.1},
-			(0, 1): {(1, 2): 0.7, (2, 1): 0.30000000000000004},
-			(-1, 0): {(0, 1): 0.7, (2, 1): 0.1, (1, 0): 0.2},
-			(0, -1): {(1, 0): 0.7999999999999999, (0, 1): 0.1, (2, 1): 0.1}
-		},
-		(1, 2): {
-			(1, 0): {(2, 2): 0.7999999999999999, (1, 3): 0.1, (1, 1): 0.1},
-			(0, 1): {(1, 3): 0.8999999999999999, (2, 2): 0.1},
-			(-1, 0): {(0, 2): 0.8999999999999999, (1, 1): 0.1},
-			(0, -1): {(1, 1): 0.7999999999999999, (2, 2): 0.1, (0, 2): 0.1}
-		},
-		(1, 3): {
-			(1, 0): {(2, 3): 0.7999999999999999, (1, 3): 0.2},
-			(0, 1): {(1, 3): 0.7999999999999999, (2, 3): 0.1, (0, 3): 0.1},
-			(-1, 0): {(0, 3): 0.7, (2, 3): 0.1, (1, 2): 0.2},
-			(0, -1): {(1, 2): 0.7999999999999999, (0, 3): 0.2}
-		},
-		(2, 0): {
-			(1, 0): {(3, 0): 0.8999999999999999, (2, 0): 0.1},
-			(0, 1): {(2, 1): 0.7999999999999999, (3, 0): 0.1, (1, 0): 0.1},
-			(-1, 0): {(1, 0): 0.7, (2, 0): 0.2, (2, 1): 0.1},
-			(0, -1): {(2, 0): 0.7, (2, 1): 0.2, (1, 0): 0.1}
-		},
-		(2, 1): {
-			(1, 0): {(3, 1): 0.7999999999999999, (1, 1): 0.2},
-			(0, 1): {(2, 2): 0.7, (1, 1): 0.1, (3, 1): 0.2},
-			(-1, 0): {(1, 1): 0.7, (2, 0): 0.1, (2, 2): 0.1, (3, 1): 0.1},
-			(0, -1): {(2, 0): 0.7, (1, 1): 0.2, (3, 1): 0.1}
-		},
-		(2, 2): {
-			(1, 0): {(3, 2): 0.7, (1, 2): 0.1, (2, 1): 0.2},
-			(0, 1): {(2, 3): 0.7999999999999999, (2, 1): 0.2},
-			(-1, 0): {(1, 2): 0.7999999999999999, (2, 1): 0.1, (3, 2): 0.1},
-			(0, -1): {(2, 1): 0.7999999999999999, (1, 2): 0.1, (3, 2): 0.1}},
-		(2, 3): {
-			(1, 0): {(3, 3): 0.7, (2, 3): 0.2, (2, 2): 0.1},
-			(0, 1): {(2, 3): 0.7999999999999999, (2, 2): 0.1, (3, 3): 0.1},
-			(-1, 0): {(1, 3): 0.8999999999999999, (2, 3): 0.1},
-			(0, -1): {(2, 2): 0.7, (3, 3): 0.1, (1, 3): 0.1, (2, 3): 0.1}
-		},
-		(3, 0): {
-			(1, 0): {(3, 0): 0.7, (3, 1): 0.1, (2, 0): 0.2},
-			(0, 1): {(3, 1): 0.7999999999999999, (2, 0): 0.2},
-			(-1, 0): {(2, 0): 0.7999999999999999, (3, 0): 0.2},
-			(0, -1): {(3, 0): 0.7999999999999999, (2, 0): 0.1, (3, 1): 0.1}
-		},
-		(3, 1): {
-			(1, 0): {(3, 1): 0.8999999999999999, (3, 2): 0.1},
-			(0, 1): {(3, 2): 0.7, (2, 1): 0.2, (3, 0): 0.1},
-			(-1, 0): {(2, 1): 0.7999999999999999, (3, 0): 0.1, (3, 1): 0.1},
-			(0, -1): {(3, 0): 0.7999999999999999, (2, 1): 0.2}
-		},
-		(3, 2): {
-			(1, 0): {(3, 2): 0.7999999999999999, (3, 1): 0.1, (2, 2): 0.1},
-			(0, 1): {(3, 3): 0.7, (3, 2): 0.2, (2, 2): 0.1},
-			(-1, 0): {(2, 2): 0.9999999999999999},
-			(0, -1): {(3, 1): 0.7999999999999999, (3, 3): 0.1, (3, 2): 0.1}
-		},
-		(3, 3): {
-			(1, 0): {(3, 3): 0.7999999999999999, (3, 2): 0.2},
-			(0, 1): {(3, 3): 0.7999999999999999, (3, 2): 0.2},
-			(-1, 0): {(2, 3): 0.7999999999999999, (3, 2): 0.1, (3, 3): 0.1},
-			(0, -1): {(3, 2): 0.7999999999999999, (2, 3): 0.2}
-		}
-	}
+    """
+    Example 2: Probabilistic Transition
+    """
+    transition_table = {
+        (0, 0): {
+            (1, 0): {(1, 0): 0.7, (0, 1): 0.2, (0, 0): 0.1},
+            (0, 1): {(0, 1): 0.7999999999999999, (1, 0): 0.2},
+            (-1, 0): {(0, 0): 0.7, (1, 0): 0.2, (0, 1): 0.1},
+            (0, -1): {(0, 0): 0.7, (1, 0): 0.1, (0, 1): 0.2}
+        },
+        (0, 1): {
+            (1, 0): {(1, 1): 0.7999999999999999, (0, 1): 0.1, (0, 2): 0.1},
+            (0, 1): {(0, 2): 0.7999999999999999, (0, 0): 0.2},
+            (-1, 0): {(0, 1): 0.8999999999999999, (0, 0): 0.1},
+            (0, -1): {(0, 0): 0.7999999999999999, (0, 2): 0.1, (0, 1): 0.1}
+        },
+        (0, 2): {
+            (1, 0): {(1, 2): 0.7999999999999999, (0, 1): 0.2},
+            (0, 1): {(0, 3): 0.7999999999999999, (0, 1): 0.1, (1, 2): 0.1},
+            (-1, 0): {(0, 2): 0.7, (0, 1): 0.1, (1, 2): 0.1, (0, 3): 0.1},
+            (0, -1): {(0, 1): 0.8999999999999999, (0, 3): 0.1}
+        },
+        (0, 3): {
+            (1, 0): {(1, 3): 0.8999999999999999, (0, 2): 0.1},
+            (0, 1): {(0, 3): 0.9999999999999999},
+            (-1, 0): {(0, 3): 0.7999999999999999, (0, 2): 0.1, (1, 3): 0.1},
+            (0, -1): {(0, 2): 0.7999999999999999, (0, 3): 0.2}
+        },
+        (1, 0): {
+            (1, 0): {(2, 0): 0.8999999999999999, (1, 1): 0.1},
+            (0, 1): {(1, 1): 0.8999999999999999, (1, 0): 0.1},
+            (-1, 0): {(0, 0): 0.7, (1, 1): 0.2, (2, 0): 0.1},
+            (0, -1): {(1, 0): 0.7999999999999999, (0, 0): 0.2}
+        },
+        (1, 1): {
+            (1, 0): {(2, 1): 0.7999999999999999, (1, 0): 0.1, (0, 1): 0.1},
+            (0, 1): {(1, 2): 0.7, (2, 1): 0.30000000000000004},
+            (-1, 0): {(0, 1): 0.7, (2, 1): 0.1, (1, 0): 0.2},
+            (0, -1): {(1, 0): 0.7999999999999999, (0, 1): 0.1, (2, 1): 0.1}
+        },
+        (1, 2): {
+            (1, 0): {(2, 2): 0.7999999999999999, (1, 3): 0.1, (1, 1): 0.1},
+            (0, 1): {(1, 3): 0.8999999999999999, (2, 2): 0.1},
+            (-1, 0): {(0, 2): 0.8999999999999999, (1, 1): 0.1},
+            (0, -1): {(1, 1): 0.7999999999999999, (2, 2): 0.1, (0, 2): 0.1}
+        },
+        (1, 3): {
+            (1, 0): {(2, 3): 0.7999999999999999, (1, 3): 0.2},
+            (0, 1): {(1, 3): 0.7999999999999999, (2, 3): 0.1, (0, 3): 0.1},
+            (-1, 0): {(0, 3): 0.7, (2, 3): 0.1, (1, 2): 0.2},
+            (0, -1): {(1, 2): 0.7999999999999999, (0, 3): 0.2}
+        },
+        (2, 0): {
+            (1, 0): {(3, 0): 0.8999999999999999, (2, 0): 0.1},
+            (0, 1): {(2, 1): 0.7999999999999999, (3, 0): 0.1, (1, 0): 0.1},
+            (-1, 0): {(1, 0): 0.7, (2, 0): 0.2, (2, 1): 0.1},
+            (0, -1): {(2, 0): 0.7, (2, 1): 0.2, (1, 0): 0.1}
+        },
+        (2, 1): {
+            (1, 0): {(3, 1): 0.7999999999999999, (1, 1): 0.2},
+            (0, 1): {(2, 2): 0.7, (1, 1): 0.1, (3, 1): 0.2},
+            (-1, 0): {(1, 1): 0.7, (2, 0): 0.1, (2, 2): 0.1, (3, 1): 0.1},
+            (0, -1): {(2, 0): 0.7, (1, 1): 0.2, (3, 1): 0.1}
+        },
+        (2, 2): {
+            (1, 0): {(3, 2): 0.7, (1, 2): 0.1, (2, 1): 0.2},
+            (0, 1): {(2, 3): 0.7999999999999999, (2, 1): 0.2},
+            (-1, 0): {(1, 2): 0.7999999999999999, (2, 1): 0.1, (3, 2): 0.1},
+            (0, -1): {(2, 1): 0.7999999999999999, (1, 2): 0.1, (3, 2): 0.1}},
+        (2, 3): {
+            (1, 0): {(3, 3): 0.7, (2, 3): 0.2, (2, 2): 0.1},
+            (0, 1): {(2, 3): 0.7999999999999999, (2, 2): 0.1, (3, 3): 0.1},
+            (-1, 0): {(1, 3): 0.8999999999999999, (2, 3): 0.1},
+            (0, -1): {(2, 2): 0.7, (3, 3): 0.1, (1, 3): 0.1, (2, 3): 0.1}
+        },
+        (3, 0): {
+            (1, 0): {(3, 0): 0.7, (3, 1): 0.1, (2, 0): 0.2},
+            (0, 1): {(3, 1): 0.7999999999999999, (2, 0): 0.2},
+            (-1, 0): {(2, 0): 0.7999999999999999, (3, 0): 0.2},
+            (0, -1): {(3, 0): 0.7999999999999999, (2, 0): 0.1, (3, 1): 0.1}
+        },
+        (3, 1): {
+            (1, 0): {(3, 1): 0.8999999999999999, (3, 2): 0.1},
+            (0, 1): {(3, 2): 0.7, (2, 1): 0.2, (3, 0): 0.1},
+            (-1, 0): {(2, 1): 0.7999999999999999, (3, 0): 0.1, (3, 1): 0.1},
+            (0, -1): {(3, 0): 0.7999999999999999, (2, 1): 0.2}
+        },
+        (3, 2): {
+            (1, 0): {(3, 2): 0.7999999999999999, (3, 1): 0.1, (2, 2): 0.1},
+            (0, 1): {(3, 3): 0.7, (3, 2): 0.2, (2, 2): 0.1},
+            (-1, 0): {(2, 2): 0.9999999999999999},
+            (0, -1): {(3, 1): 0.7999999999999999, (3, 3): 0.1, (3, 2): 0.1}
+        },
+        (3, 3): {
+            (1, 0): {(3, 3): 0.7999999999999999, (3, 2): 0.2},
+            (0, 1): {(3, 3): 0.7999999999999999, (3, 2): 0.2},
+            (-1, 0): {(2, 3): 0.7999999999999999, (3, 2): 0.1, (3, 3): 0.1},
+            (0, -1): {(3, 2): 0.7999999999999999, (2, 3): 0.2}
+        }
+    }
 
-	reward_table = {
-		(0, 0): {
-			(1, 0): {(1, 0): -1, (0, 1): -1, (0, 0): -1}, (0, 1): {(0, 1): -1, (1, 0): -1},
-			(-1, 0): {(0, 0): -1, (1, 0): -1, (0, 1): -1}, (0, -1): {(0, 0): -1, (1, 0): -1, (0, 1): -1}
-		},
-		(0, 1): {
-			(1, 0): {(1, 1): -1, (0, 1): -1, (0, 2): -1}, (0, 1): {(0, 2): -1, (0, 0): -1},
-			(-1, 0): {(0, 1): -1, (0, 0): -1}, (0, -1): {(0, 0): -1, (0, 2): -1, (0, 1): -1}
-		},
-		(0, 2): {
-			(1, 0): {(1, 2): -1, (0, 1): -1}, (0, 1): {(0, 3): -1, (0, 1): -1, (1, 2): -1},
-			(-1, 0): {(0, 2): -1, (0, 1): -1, (1, 2): -1, (0, 3): -1}, (0, -1): {(0, 1): -1, (0, 3): -1}
-		},
-		(0, 3): {
-			(1, 0): {(1, 3): -1, (0, 2): -1}, (0, 1): {(0, 3): -1},
-			(-1, 0): {(0, 3): -1, (0, 2): -1, (1, 3): -1}, (0, -1): {(0, 2): -1, (0, 3): -1}
-		},
-		(1, 0): {
-			(1, 0): {(2, 0): -1, (1, 1): -1}, (0, 1): {(1, 1): -1, (1, 0): -1},
-			(-1, 0): {(0, 0): -1, (1, 1): -1, (2, 0): -1}, (0, -1): {(1, 0): -1, (0, 0): -1}
-		},
-		(1, 1): {
-			(1, 0): {(2, 1): -100, (1, 0): -100, (0, 1): -100}, (0, 1): {(1, 2): -100, (2, 1): -100},
-			(-1, 0): {(0, 1): -100, (2, 1): -100, (1, 0): -100}, (0, -1): {(1, 0): -100, (0, 1): -100, (2, 1): -100}
-		},
-		(1, 2): {
-			(1, 0): {(2, 2): -1, (1, 3): -1, (1, 1): -1}, (0, 1): {(1, 3): -1, (2, 2): -1},
-			(-1, 0): {(0, 2): -1, (1, 1): -1}, (0, -1): {(1, 1): -1, (2, 2): -1, (0, 2): -1}
-		},
-		(1, 3): {
-			(1, 0): {(2, 3): -1, (1, 3): -1}, (0, 1): {(1, 3): -1, (2, 3): -1, (0, 3): -1},
-			(-1, 0): {(0, 3): -1, (2, 3): -1, (1, 2): -1}, (0, -1): {(1, 2): -1, (0, 3): -1}
-		},
-		(2, 0): {
-			(1, 0): {(3, 0): -1, (2, 0): -1}, (0, 1): {(2, 1): -1, (3, 0): -1, (1, 0): -1},
-			(-1, 0): {(1, 0): -1, (2, 0): -1, (2, 1): -1}, (0, -1): {(2, 0): -1, (2, 1): -1, (1, 0): -1}
-		},
-		(2, 1): {
-			(1, 0): {(3, 1): -1, (1, 1): -1}, (0, 1): {(2, 2): -1, (1, 1): -1, (3, 1): -1},
-			(-1, 0): {(1, 1): -1, (2, 0): -1, (2, 2): -1, (3, 1): -1}, (0, -1): {(2, 0): -1, (1, 1): -1, (3, 1): -1}
-		},
-		(2, 2): {
-			(1, 0): {(3, 2): -1, (1, 2): -1, (2, 1): -1}, (0, 1): {(2, 3): -1, (2, 1): -1},
-			(-1, 0): {(1, 2): -1, (2, 1): -1, (3, 2): -1}, (0, -1): {(2, 1): -1, (1, 2): -1, (3, 2): -1}
-		},
-		(2, 3): {
-			(1, 0): {(3, 3): -1, (2, 3): -1, (2, 2): -1}, (0, 1): {(2, 3): -1, (2, 2): -1, (3, 3): -1},
-			(-1, 0): {(1, 3): -1, (2, 3): -1}, (0, -1): {(2, 2): -1, (3, 3): -1, (1, 3): -1, (2, 3): -1}
-		},
-		(3, 0): {
-			(1, 0): {(3, 0): -1, (3, 1): -1, (2, 0): -1}, (0, 1): {(3, 1): -1, (2, 0): -1},
-			(-1, 0): {(2, 0): -1, (3, 0): -1}, (0, -1): {(3, 0): -1, (2, 0): -1, (3, 1): -1}
-		},
-		(3, 1): {
-			(1, 0): {(3, 1): -1, (3, 2): 10}, (0, 1): {(3, 2): 10, (2, 1): 10, (3, 0): 10},
-			(-1, 0): {(2, 1): 10, (3, 0): 10, (3, 1): -1}, (0, -1): {(3, 0): 10, (2, 1): 10}
-		},
-		(3, 2): {
-			(1, 0): {(3, 2): -1, (3, 1): -1, (2, 2): -1}, (0, 1): {(3, 3): -1, (3, 2): -1, (2, 2): -1},
-			(-1, 0): {(2, 2): -1}, (0, -1): {(3, 1): -1, (3, 3): -1, (3, 2): -1}},
-		(3, 3): {
-			(1, 0): {(3, 3): -1, (3, 2): -1}, (0, 1): {(3, 3): -1, (3, 2): -1},
-			(-1, 0): {(2, 3): -1, (3, 2): -1, (3, 3): -1}, (0, -1): {(3, 2): -1, (2, 3): -1}
-		}
-	}
+    reward_table = {
+        (0, 0): {
+            (1, 0): {(1, 0): -1, (0, 1): -1, (0, 0): -1}, (0, 1): {(0, 1): -1, (1, 0): -1},
+            (-1, 0): {(0, 0): -1, (1, 0): -1, (0, 1): -1}, (0, -1): {(0, 0): -1, (1, 0): -1, (0, 1): -1}
+        },
+        (0, 1): {
+            (1, 0): {(1, 1): -1, (0, 1): -1, (0, 2): -1}, (0, 1): {(0, 2): -1, (0, 0): -1},
+            (-1, 0): {(0, 1): -1, (0, 0): -1}, (0, -1): {(0, 0): -1, (0, 2): -1, (0, 1): -1}
+        },
+        (0, 2): {
+            (1, 0): {(1, 2): -1, (0, 1): -1}, (0, 1): {(0, 3): -1, (0, 1): -1, (1, 2): -1},
+            (-1, 0): {(0, 2): -1, (0, 1): -1, (1, 2): -1, (0, 3): -1}, (0, -1): {(0, 1): -1, (0, 3): -1}
+        },
+        (0, 3): {
+            (1, 0): {(1, 3): -1, (0, 2): -1}, (0, 1): {(0, 3): -1},
+            (-1, 0): {(0, 3): -1, (0, 2): -1, (1, 3): -1}, (0, -1): {(0, 2): -1, (0, 3): -1}
+        },
+        (1, 0): {
+            (1, 0): {(2, 0): -1, (1, 1): -1}, (0, 1): {(1, 1): -1, (1, 0): -1},
+            (-1, 0): {(0, 0): -1, (1, 1): -1, (2, 0): -1}, (0, -1): {(1, 0): -1, (0, 0): -1}
+        },
+        (1, 1): {
+            (1, 0): {(2, 1): -100, (1, 0): -100, (0, 1): -100}, (0, 1): {(1, 2): -100, (2, 1): -100},
+            (-1, 0): {(0, 1): -100, (2, 1): -100, (1, 0): -100}, (0, -1): {(1, 0): -100, (0, 1): -100, (2, 1): -100}
+        },
+        (1, 2): {
+            (1, 0): {(2, 2): -1, (1, 3): -1, (1, 1): -1}, (0, 1): {(1, 3): -1, (2, 2): -1},
+            (-1, 0): {(0, 2): -1, (1, 1): -1}, (0, -1): {(1, 1): -1, (2, 2): -1, (0, 2): -1}
+        },
+        (1, 3): {
+            (1, 0): {(2, 3): -1, (1, 3): -1}, (0, 1): {(1, 3): -1, (2, 3): -1, (0, 3): -1},
+            (-1, 0): {(0, 3): -1, (2, 3): -1, (1, 2): -1}, (0, -1): {(1, 2): -1, (0, 3): -1}
+        },
+        (2, 0): {
+            (1, 0): {(3, 0): -1, (2, 0): -1}, (0, 1): {(2, 1): -1, (3, 0): -1, (1, 0): -1},
+            (-1, 0): {(1, 0): -1, (2, 0): -1, (2, 1): -1}, (0, -1): {(2, 0): -1, (2, 1): -1, (1, 0): -1}
+        },
+        (2, 1): {
+            (1, 0): {(3, 1): -1, (1, 1): -1}, (0, 1): {(2, 2): -1, (1, 1): -1, (3, 1): -1},
+            (-1, 0): {(1, 1): -1, (2, 0): -1, (2, 2): -1, (3, 1): -1}, (0, -1): {(2, 0): -1, (1, 1): -1, (3, 1): -1}
+        },
+        (2, 2): {
+            (1, 0): {(3, 2): -1, (1, 2): -1, (2, 1): -1}, (0, 1): {(2, 3): -1, (2, 1): -1},
+            (-1, 0): {(1, 2): -1, (2, 1): -1, (3, 2): -1}, (0, -1): {(2, 1): -1, (1, 2): -1, (3, 2): -1}
+        },
+        (2, 3): {
+            (1, 0): {(3, 3): -1, (2, 3): -1, (2, 2): -1}, (0, 1): {(2, 3): -1, (2, 2): -1, (3, 3): -1},
+            (-1, 0): {(1, 3): -1, (2, 3): -1}, (0, -1): {(2, 2): -1, (3, 3): -1, (1, 3): -1, (2, 3): -1}
+        },
+        (3, 0): {
+            (1, 0): {(3, 0): -1, (3, 1): -1, (2, 0): -1}, (0, 1): {(3, 1): -1, (2, 0): -1},
+            (-1, 0): {(2, 0): -1, (3, 0): -1}, (0, -1): {(3, 0): -1, (2, 0): -1, (3, 1): -1}
+        },
+        (3, 1): {
+            (1, 0): {(3, 1): -1, (3, 2): 10}, (0, 1): {(3, 2): 10, (2, 1): 10, (3, 0): 10},
+            (-1, 0): {(2, 1): 10, (3, 0): 10, (3, 1): -1}, (0, -1): {(3, 0): 10, (2, 1): 10}
+        },
+        (3, 2): {
+            (1, 0): {(3, 2): -1, (3, 1): -1, (2, 2): -1}, (0, 1): {(3, 3): -1, (3, 2): -1, (2, 2): -1},
+            (-1, 0): {(2, 2): -1}, (0, -1): {(3, 1): -1, (3, 3): -1, (3, 2): -1}},
+        (3, 3): {
+            (1, 0): {(3, 3): -1, (3, 2): -1}, (0, 1): {(3, 3): -1, (3, 2): -1},
+            (-1, 0): {(2, 3): -1, (3, 2): -1, (3, 3): -1}, (0, -1): {(3, 2): -1, (2, 3): -1}
+        }
+    }
 
-	value_table = {
-		(0, 0): 0, (0, 1): 0, (0, 2): 0, (0, 3): 0,
-		(1, 0): 0, (1, 1): 0, (1, 2): 0, (1, 3): 0,
-		(2, 0): 0, (2, 1): 0, (2, 2): 0, (2, 3): 0,
-		(3, 0): 0, (3, 1): 0, (3, 2): 0, (3, 3): 0}
+    value_table = {
+        (0, 0): 0, (0, 1): 0, (0, 2): 0, (0, 3): 0,
+        (1, 0): 0, (1, 1): 0, (1, 2): 0, (1, 3): 0,
+        (2, 0): 0, (2, 1): 0, (2, 2): 0, (2, 3): 0,
+        (3, 0): 0, (3, 1): 0, (3, 2): 0, (3, 3): 0}
 
-	convergence_tolerance = 10e-7
-	gamma = .9
+    convergence_tolerance = 10e-7
+    gamma = .9
 
-	# """
-	# Uncomment to view transition or reward structure in a readable format
-	# """
-	# levelsReward  = ["state", "action", "next state", "reward"]
-	# levelsTransition  = ["state", "action", "next state", "probability"]
-	#
-	# viewDictionaryStructure(transition_table_det, levelsTransition)
-	# print('================================')
-	# viewDictionaryStructure(transition_table, levelsTransition)
-	# # viewDictionaryStructure(reward_table_det, levelsReward)
-	#
+    # """
+    # Uncomment to view transition or reward structure in a readable format
+    # """
+    # levelsReward  = ["state", "action", "next state", "reward"]
+    # levelsTransition  = ["state", "action", "next state", "probability"]
+    #
+    # viewDictionaryStructure(transition_table_det, levelsTransition)
+    # print('================================')
+    # viewDictionaryStructure(transition_table, levelsTransition)
+    # # viewDictionaryStructure(reward_table_det, levelsReward)
+    #
 
-	perform_value_iteration = ValueIteration(
-		transition_table_det, reward_table_det, value_table_det, convergence_tolerance, gamma)
-	optimal_values_determinsitic, policy_table_det = perform_value_iteration()
-	print('Example 1: Deterministic Transition\n')
-	print('Optimal Values (Deterministic)')
-	print(optimal_values_determinsitic)
-	print('Optimal Policy (Deterministic)')
-	print(policy_table_det)
+    perform_value_iteration = ValueIteration(
+        transition_table_det, reward_table_det, value_table_det, convergence_tolerance, gamma)
+    optimal_values_determinsitic, policy_table_det = perform_value_iteration()
+    print('Example 1: Deterministic Transition\n')
+    print('Optimal Values (Deterministic)')
+    print(optimal_values_determinsitic)
+    print('Optimal Policy (Deterministic)')
+    print(policy_table_det)
 
-	print('\n================================\n')
-	perform_value_iteration = ValueIteration(transition_table, reward_table, value_table, convergence_tolerance, gamma)
-	optimal_values, policy_table = perform_value_iteration()
-	print('Example 2: Probabilistic Transition\n')
-	print('Optimal Values (Probabilistic)')
-	print(optimal_values)
-	print('Optimal Policy (Probabilistic)')
-	print(policy_table)
-	
+    print('\n================================\n')
+    perform_value_iteration = ValueIteration(transition_table, reward_table, value_table, convergence_tolerance, gamma)
+    optimal_values, policy_table = perform_value_iteration()
+    print('Example 2: Probabilistic Transition\n')
+    print('Optimal Values (Probabilistic)')
+    print(optimal_values)
+    print('Optimal Policy (Probabilistic)')
+    print(policy_table)
+
 
 if __name__ == '__main__':
-	main()
+    main()
