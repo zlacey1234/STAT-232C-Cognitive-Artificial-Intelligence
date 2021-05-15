@@ -3,9 +3,11 @@
 
 This program performs Value Iteration
 
-Course: STAT 232C: Cognitive Artificial Intelligence
-Author: Zachary Lacey
+Class: STAT 232C - Cognitive Artificial Intelligence
+Project 2: Value Iteration
+Name: Zachary Lacey
 Date: April 14th, 2021
+
 """
 
 __author__ = 'Zachary Lacey'
@@ -16,7 +18,8 @@ import numpy as np
 class ValueIteration(object):
     """ A ValueIteration Class """
 
-    def __init__(self, transitionTable, rewardTable, valueTable, convergenceTolerance, gamma):
+    def __init__(self, transitionTable, rewardTable, valueTable, convergenceTolerance, gamma=1, use_softmax=False,
+                 use_noise=False, noise_beta=0):
         """
         Args:
             transitionTable (datatype: dict): This is a nested dictionary of the state-action-nextstate combinations
@@ -46,12 +49,19 @@ class ValueIteration(object):
 
             gamma (datatype: float): Discount factor
 
+            use_softmax (datatype: boolean): This is a boolean flag that the user can specify if they want to solve the
+            Policy via the Boltzmann Policy (Softmax) rather than by using the Argmax approach.
+
         """
         self.transitionTable = transitionTable
         self.rewardTable = rewardTable
         self.valueTable = valueTable
         self.convergenceTolerance = convergenceTolerance
         self.gamma = gamma
+
+        self.use_softmax = use_softmax
+        self.use_noise = use_noise
+        self.noise_beta = noise_beta
 
     def __call__(self):
         """
@@ -84,7 +94,7 @@ class ValueIteration(object):
         Args:
             state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
             state-values of the optimal policy. All state values are initialized to zero. This input is the initialized
-            stat-values structure with initialized zeros. The state_values has the following structure:
+            state-values structure with initialized zeros. The state_values has the following structure:
 
                 state_values = {state: {value}} == V(s)
 
@@ -92,8 +102,7 @@ class ValueIteration(object):
 
         Returns:
             state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
-            state-values of the optimal policy. All state values are initialized to zero. The state_values has the
-            following structure:
+            state-values of the optimal policy. The state_values has the following structure:
 
                 state_values = {state: {value}} == V(s)
 
@@ -158,6 +167,8 @@ class ValueIteration(object):
 
         policy_table = ValueIteration.optimal_policy(self, state_action_value_mem)
 
+        state_values = ValueIteration.optimal_value(self, policy_table, state_action_value_mem)
+
         return [state_values, policy_table, iteration]
 
     def optimal_policy(self, state_action_value_mem):
@@ -182,6 +193,8 @@ class ValueIteration(object):
         states = list(self.transitionTable)
         num_states = len(states)
 
+        state_values = dict()
+
         for s in range(num_states):
             actions = list(self.transitionTable[states[s]])
             num_actions = len(actions)
@@ -191,18 +204,72 @@ class ValueIteration(object):
             for a in range(num_actions):
                 state_value_sum_per_action[a] = state_action_value_mem[states[s]][actions[a]]
 
-            max_state_value = np.max(state_value_sum_per_action)
-            max_state_idx = np.argwhere(state_value_sum_per_action.flatten() == max_state_value)
-            num_max_values = len(max_state_idx)
+            if self.use_softmax:
+                softmax_policy_actions = dict()
+                policy_actions_table = np.zeros((num_actions, 1))
+                for a in range(num_actions):
+                    policy_actions_table[a] = np.exp(self.noise_beta * state_action_value_mem[states[s]][actions[a]])
+                    softmax_policy_actions[actions[a]] = policy_actions_table[a][0]
 
-            max_actions = dict()
-            for a in range(num_actions):
-                if a in max_state_idx:
-                    max_actions[actions[a]] = 1.0 / num_max_values
+                policy_actions_sum = np.sum(policy_actions_table)
 
-            policy_table[states[s]] = max_actions
+                for a in range(num_actions):
+                    softmax_policy_actions[actions[a]] /= policy_actions_sum
+
+                policy_table[states[s]] = softmax_policy_actions
+
+            else:
+                max_state_value = np.max(state_value_sum_per_action)
+                max_state_idx = np.argwhere(state_value_sum_per_action.flatten() == max_state_value)
+                num_max_values = len(max_state_idx)
+
+                max_actions = dict()
+                for a in range(num_actions):
+                    if a in max_state_idx:
+                        max_actions[actions[a]] = 1.0 / num_max_values
+
+                policy_table[states[s]] = max_actions
 
         return policy_table
+
+    def optimal_value(self, optimal_policy, state_action_value_mem):
+        """ Optimal Value Method
+
+        This method calculates the optimal state-value based on the optimal policy.
+
+        Args:
+            optimal_policy (datatype: dict): This is a nested dictionary of form state-action-probability giving the
+            approximate optimal policy of an agent.
+
+                optimal_policy = {state: {action: {probability}}} == pi(a | s)
+
+            state_action_value_mem (datatype: dict): This is a nested dictionary of form state-action-value which
+            contains the stored state-action values (aka, Q-Values) for the optimal policy. The state_action_value_mem
+            has the following structure:
+
+                state_action_value_mem = {state: {action: {value}}} == Q(s, a)
+
+        Returns:
+            state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
+            state-values of the optimal policy. The state_values has the following structure:
+
+                state_values = {state: {value}} == V(s)
+
+        """
+        states = list(self.transitionTable)
+        num_states = len(states)
+
+        state_values = dict()
+
+        # For each state
+        for s in range(num_states):
+            actions = list(optimal_policy[states[s]])
+            num_actions = len(actions)
+
+            state_values[states[s]] = np.sum([optimal_policy[states[s]][actions[a]]
+                                              * state_action_value_mem[states[s]][actions[a]]
+                                              for a in range(num_actions)])
+        return state_values
 
 
 def viewDictionaryStructure(d, levels, indent=0):
@@ -273,62 +340,52 @@ def main():
             (1, 0): {(1, 0): 0.7, (0, 1): 0.2, (0, 0): 0.1},
             (0, 1): {(0, 1): 0.7999999999999999, (1, 0): 0.2},
             (-1, 0): {(0, 0): 0.7, (1, 0): 0.2, (0, 1): 0.1},
-            (0, -1): {(0, 0): 0.7, (1, 0): 0.1, (0, 1): 0.2}
-        },
+            (0, -1): {(0, 0): 0.7, (1, 0): 0.1, (0, 1): 0.2}},
         (0, 1): {
             (1, 0): {(1, 1): 0.7999999999999999, (0, 1): 0.1, (0, 2): 0.1},
             (0, 1): {(0, 2): 0.7999999999999999, (0, 0): 0.2},
             (-1, 0): {(0, 1): 0.8999999999999999, (0, 0): 0.1},
-            (0, -1): {(0, 0): 0.7999999999999999, (0, 2): 0.1, (0, 1): 0.1}
-        },
+            (0, -1): {(0, 0): 0.7999999999999999, (0, 2): 0.1, (0, 1): 0.1}},
         (0, 2): {
             (1, 0): {(1, 2): 0.7999999999999999, (0, 1): 0.2},
             (0, 1): {(0, 3): 0.7999999999999999, (0, 1): 0.1, (1, 2): 0.1},
             (-1, 0): {(0, 2): 0.7, (0, 1): 0.1, (1, 2): 0.1, (0, 3): 0.1},
-            (0, -1): {(0, 1): 0.8999999999999999, (0, 3): 0.1}
-        },
+            (0, -1): {(0, 1): 0.8999999999999999, (0, 3): 0.1}},
         (0, 3): {
             (1, 0): {(1, 3): 0.8999999999999999, (0, 2): 0.1},
             (0, 1): {(0, 3): 0.9999999999999999},
             (-1, 0): {(0, 3): 0.7999999999999999, (0, 2): 0.1, (1, 3): 0.1},
-            (0, -1): {(0, 2): 0.7999999999999999, (0, 3): 0.2}
-        },
+            (0, -1): {(0, 2): 0.7999999999999999, (0, 3): 0.2}},
         (1, 0): {
             (1, 0): {(2, 0): 0.8999999999999999, (1, 1): 0.1},
             (0, 1): {(1, 1): 0.8999999999999999, (1, 0): 0.1},
             (-1, 0): {(0, 0): 0.7, (1, 1): 0.2, (2, 0): 0.1},
-            (0, -1): {(1, 0): 0.7999999999999999, (0, 0): 0.2}
-        },
+            (0, -1): {(1, 0): 0.7999999999999999, (0, 0): 0.2}},
         (1, 1): {
             (1, 0): {(2, 1): 0.7999999999999999, (1, 0): 0.1, (0, 1): 0.1},
             (0, 1): {(1, 2): 0.7, (2, 1): 0.30000000000000004},
             (-1, 0): {(0, 1): 0.7, (2, 1): 0.1, (1, 0): 0.2},
-            (0, -1): {(1, 0): 0.7999999999999999, (0, 1): 0.1, (2, 1): 0.1}
-        },
+            (0, -1): {(1, 0): 0.7999999999999999, (0, 1): 0.1, (2, 1): 0.1}},
         (1, 2): {
             (1, 0): {(2, 2): 0.7999999999999999, (1, 3): 0.1, (1, 1): 0.1},
             (0, 1): {(1, 3): 0.8999999999999999, (2, 2): 0.1},
             (-1, 0): {(0, 2): 0.8999999999999999, (1, 1): 0.1},
-            (0, -1): {(1, 1): 0.7999999999999999, (2, 2): 0.1, (0, 2): 0.1}
-        },
+            (0, -1): {(1, 1): 0.7999999999999999, (2, 2): 0.1, (0, 2): 0.1}},
         (1, 3): {
             (1, 0): {(2, 3): 0.7999999999999999, (1, 3): 0.2},
             (0, 1): {(1, 3): 0.7999999999999999, (2, 3): 0.1, (0, 3): 0.1},
             (-1, 0): {(0, 3): 0.7, (2, 3): 0.1, (1, 2): 0.2},
-            (0, -1): {(1, 2): 0.7999999999999999, (0, 3): 0.2}
-        },
+            (0, -1): {(1, 2): 0.7999999999999999, (0, 3): 0.2}},
         (2, 0): {
             (1, 0): {(3, 0): 0.8999999999999999, (2, 0): 0.1},
             (0, 1): {(2, 1): 0.7999999999999999, (3, 0): 0.1, (1, 0): 0.1},
             (-1, 0): {(1, 0): 0.7, (2, 0): 0.2, (2, 1): 0.1},
-            (0, -1): {(2, 0): 0.7, (2, 1): 0.2, (1, 0): 0.1}
-        },
+            (0, -1): {(2, 0): 0.7, (2, 1): 0.2, (1, 0): 0.1}},
         (2, 1): {
             (1, 0): {(3, 1): 0.7999999999999999, (1, 1): 0.2},
             (0, 1): {(2, 2): 0.7, (1, 1): 0.1, (3, 1): 0.2},
             (-1, 0): {(1, 1): 0.7, (2, 0): 0.1, (2, 2): 0.1, (3, 1): 0.1},
-            (0, -1): {(2, 0): 0.7, (1, 1): 0.2, (3, 1): 0.1}
-        },
+            (0, -1): {(2, 0): 0.7, (1, 1): 0.2, (3, 1): 0.1}},
         (2, 2): {
             (1, 0): {(3, 2): 0.7, (1, 2): 0.1, (2, 1): 0.2},
             (0, 1): {(2, 3): 0.7999999999999999, (2, 1): 0.2},
@@ -338,47 +395,38 @@ def main():
             (1, 0): {(3, 3): 0.7, (2, 3): 0.2, (2, 2): 0.1},
             (0, 1): {(2, 3): 0.7999999999999999, (2, 2): 0.1, (3, 3): 0.1},
             (-1, 0): {(1, 3): 0.8999999999999999, (2, 3): 0.1},
-            (0, -1): {(2, 2): 0.7, (3, 3): 0.1, (1, 3): 0.1, (2, 3): 0.1}
-        },
+            (0, -1): {(2, 2): 0.7, (3, 3): 0.1, (1, 3): 0.1, (2, 3): 0.1}},
         (3, 0): {
             (1, 0): {(3, 0): 0.7, (3, 1): 0.1, (2, 0): 0.2},
             (0, 1): {(3, 1): 0.7999999999999999, (2, 0): 0.2},
             (-1, 0): {(2, 0): 0.7999999999999999, (3, 0): 0.2},
-            (0, -1): {(3, 0): 0.7999999999999999, (2, 0): 0.1, (3, 1): 0.1}
-        },
+            (0, -1): {(3, 0): 0.7999999999999999, (2, 0): 0.1, (3, 1): 0.1}},
         (3, 1): {
             (1, 0): {(3, 1): 0.8999999999999999, (3, 2): 0.1},
             (0, 1): {(3, 2): 0.7, (2, 1): 0.2, (3, 0): 0.1},
             (-1, 0): {(2, 1): 0.7999999999999999, (3, 0): 0.1, (3, 1): 0.1},
-            (0, -1): {(3, 0): 0.7999999999999999, (2, 1): 0.2}
-        },
+            (0, -1): {(3, 0): 0.7999999999999999, (2, 1): 0.2}},
         (3, 2): {
             (1, 0): {(3, 2): 0.7999999999999999, (3, 1): 0.1, (2, 2): 0.1},
             (0, 1): {(3, 3): 0.7, (3, 2): 0.2, (2, 2): 0.1},
             (-1, 0): {(2, 2): 0.9999999999999999},
-            (0, -1): {(3, 1): 0.7999999999999999, (3, 3): 0.1, (3, 2): 0.1}
-        },
+            (0, -1): {(3, 1): 0.7999999999999999, (3, 3): 0.1, (3, 2): 0.1}},
         (3, 3): {
             (1, 0): {(3, 3): 0.7999999999999999, (3, 2): 0.2},
             (0, 1): {(3, 3): 0.7999999999999999, (3, 2): 0.2},
             (-1, 0): {(2, 3): 0.7999999999999999, (3, 2): 0.1, (3, 3): 0.1},
-            (0, -1): {(3, 2): 0.7999999999999999, (2, 3): 0.2}
-        }
-    }
+            (0, -1): {(3, 2): 0.7999999999999999, (2, 3): 0.2}}}
 
     rewardTable = {
         (0, 0): {
             (1, 0): {(1, 0): -1, (0, 1): -1, (0, 0): -1}, (0, 1): {(0, 1): -1, (1, 0): -1},
-            (-1, 0): {(0, 0): -1, (1, 0): -1, (0, 1): -1}, (0, -1): {(0, 0): -1, (1, 0): -1, (0, 1): -1}
-        },
+            (-1, 0): {(0, 0): -1, (1, 0): -1, (0, 1): -1}, (0, -1): {(0, 0): -1, (1, 0): -1, (0, 1): -1}},
         (0, 1): {
             (1, 0): {(1, 1): -1, (0, 1): -1, (0, 2): -1}, (0, 1): {(0, 2): -1, (0, 0): -1},
-            (-1, 0): {(0, 1): -1, (0, 0): -1}, (0, -1): {(0, 0): -1, (0, 2): -1, (0, 1): -1}
-        },
+            (-1, 0): {(0, 1): -1, (0, 0): -1}, (0, -1): {(0, 0): -1, (0, 2): -1, (0, 1): -1}},
         (0, 2): {
             (1, 0): {(1, 2): -1, (0, 1): -1}, (0, 1): {(0, 3): -1, (0, 1): -1, (1, 2): -1},
-            (-1, 0): {(0, 2): -1, (0, 1): -1, (1, 2): -1, (0, 3): -1}, (0, -1): {(0, 1): -1, (0, 3): -1}
-        },
+            (-1, 0): {(0, 2): -1, (0, 1): -1, (1, 2): -1, (0, 3): -1}, (0, -1): {(0, 1): -1, (0, 3): -1}},
         (0, 3): {
             (1, 0): {(1, 3): -1, (0, 2): -1}, (0, 1): {(0, 3): -1},
             (-1, 0): {(0, 3): -1, (0, 2): -1, (1, 3): -1}, (0, -1): {(0, 2): -1, (0, 3): -1}
