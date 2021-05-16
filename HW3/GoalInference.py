@@ -10,6 +10,7 @@ Date: May 3rd, 2021
 __author__ = 'Zachary Lacey'
 
 import numpy as np
+import datetime
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
@@ -151,6 +152,61 @@ def get_probability_of_individual_state_transitions(transition_table, policy_tab
 
     print(marginal_probability_next_state)
 
+    return marginal_probability_next_state
+
+
+def get_likelihood_entire_path_sequence(observed_sequence, marginal_probability_next_state):
+
+    num_timesteps_trajectory = len(observed_sequence)
+
+    print(num_timesteps_trajectory)
+
+    likelihood_sequence, likelihood_sequence_history = get_likelihood_part_of_path_sequence(
+        observed_sequence, marginal_probability_next_state, t=(num_timesteps_trajectory - 1))
+
+    return likelihood_sequence, likelihood_sequence_history
+
+
+def get_likelihood_part_of_path_sequence(observed_sequence, marginal_probability_next_state, t=2):
+
+    if t == 1:
+        initial_trajectory_state = observed_sequence[0]
+        next_trajectory_state = observed_sequence[1]
+        likelihood = marginal_probability_next_state[initial_trajectory_state][next_trajectory_state]
+        likelihood_history = [likelihood]
+        return likelihood, likelihood_history
+    else:
+        current_trajectory_state = observed_sequence[t - 1]
+        next_trajectory_state = observed_sequence[t]
+        likelihood_prev, likelihood_history_prev = get_likelihood_part_of_path_sequence(
+            observed_sequence, marginal_probability_next_state, (t - 1))
+        likelihood = marginal_probability_next_state[current_trajectory_state][next_trajectory_state] * likelihood_prev
+        likelihood_history_prev.append(likelihood)
+        likelihood_history = likelihood_history_prev
+        return likelihood, likelihood_history
+
+def get_likelihood_part_path_sequence(observed_sequence, marginal_probability_next_state, t=2):
+
+    P_prev = 1
+
+    for timestep in range(t):
+        print('timestep')
+        print(observed_sequence)
+        print(timestep)
+        print(observed_sequence[timestep])
+        print('\n')
+
+        current_trajectory_state = observed_sequence[timestep]
+        next_trajectory_state = observed_sequence[timestep + 1]
+
+        P = marginal_probability_next_state[current_trajectory_state][next_trajectory_state] * P_prev
+
+        P_prev = P
+
+        print(marginal_probability_next_state[current_trajectory_state][next_trajectory_state])
+    print(P)
+
+
 
 def main():
     transition = {(0, 0): {(1, 0): {(1, 0): 1},
@@ -208,18 +264,18 @@ def main():
                                                          convergence_tolerance, gamma, use_softmax=True,
                                                          use_noise=True, noise_beta=beta)
     optimal_value_table_a_env1, optimal_policy_table_a_env1 = perform_value_iteration_goal_a_env1()
-
-    visualizeValueTable(gridWidth, gridHeight, goalStates[2], trapStates, optimal_value_table_a_env1)
-    visualizePolicy(gridWidth, gridHeight, goalStates[2], trapStates, optimal_policy_table_a_env1)
+    #
+    # visualizeValueTable(gridWidth, gridHeight, goalStates[2], trapStates, optimal_value_table_a_env1)
+    # visualizePolicy(gridWidth, gridHeight, goalStates[2], trapStates, optimal_policy_table_a_env1)
 
     # Goal B
     perform_value_iteration_goal_b_env1 = ValueIteration(transition, rewardB, value_table_initial,
                                                          convergence_tolerance, gamma, use_softmax=True,
                                                          use_noise=True, noise_beta=beta)
     optimal_value_table_b_env1, optimal_policy_table_b_env1 = perform_value_iteration_goal_b_env1()
-
-    visualizeValueTable(gridWidth, gridHeight, goalStates[0], trapStates, optimal_value_table_b_env1)
-    visualizePolicy(gridWidth, gridHeight, goalStates[0], trapStates, optimal_policy_table_b_env1)
+    #
+    # visualizeValueTable(gridWidth, gridHeight, goalStates[0], trapStates, optimal_value_table_b_env1)
+    # visualizePolicy(gridWidth, gridHeight, goalStates[0], trapStates, optimal_policy_table_b_env1)
 
     # Goal C
     perform_value_iteration_goal_c_env1 = ValueIteration(transition, rewardC, value_table_initial,
@@ -231,7 +287,36 @@ def main():
     visualizePolicy(gridWidth, gridHeight, goalStates[1], trapStates, optimal_policy_table_c_env1)
 
     print(optimal_policy_table_c_env1)
-    get_probability_of_individual_state_transitions(transition, optimal_policy_table_c_env1)
+    marginal_probability_next_state_a_env1 = get_probability_of_individual_state_transitions(
+        transition, optimal_policy_table_a_env1)
+
+    marginal_probability_next_state_b_env1 = get_probability_of_individual_state_transitions(
+        transition, optimal_policy_table_b_env1)
+
+    marginal_probability_next_state_c_env1 = get_probability_of_individual_state_transitions(
+        transition, optimal_policy_table_c_env1)
+
+    start_time = datetime.datetime.now()
+    get_likelihood_part_path_sequence(trajectoryToGoalC, marginal_probability_next_state_c_env1)
+    stop_time = datetime.datetime.now()
+
+    delta = stop_time - start_time
+    print("--- %s milliseconds ---" % (int(delta.total_seconds() * 1000)))
+
+    like, like_hist = get_likelihood_entire_path_sequence(trajectoryToGoalC, marginal_probability_next_state_a_env1)
+
+    print(like)
+    print(like_hist)
+
+    like, like_hist = get_likelihood_entire_path_sequence(trajectoryToGoalC, marginal_probability_next_state_b_env1)
+
+    print(like)
+    print(like_hist)
+
+    like, like_hist = get_likelihood_entire_path_sequence(trajectoryToGoalC, marginal_probability_next_state_c_env1)
+
+    print(like)
+    print(like_hist)
 
 if __name__ == '__main__':
     main()
