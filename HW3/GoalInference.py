@@ -185,6 +185,55 @@ def get_likelihood_part_of_path_sequence(observed_sequence, marginal_probability
         likelihood_history = likelihood_history_prev
         return likelihood, likelihood_history
 
+
+def get_posterior_of_trajectory(observed_sequence, marginal_probability_next_state_a_table,
+                                marginal_probability_next_state_b_table, marginal_probability_next_state_c_table):
+
+    num_timesteps_trajectory = len(observed_sequence)
+
+    likelihood_a_final, likelihood_a_history = get_likelihood_entire_path_sequence(
+        observed_sequence, marginal_probability_next_state_a_table)
+
+    likelihood_b_final, likelihood_b_history = get_likelihood_entire_path_sequence(
+        observed_sequence, marginal_probability_next_state_b_table)
+
+    likelihood_c_final, likelihood_c_history = get_likelihood_entire_path_sequence(
+        observed_sequence, marginal_probability_next_state_c_table)
+
+    prior_goals = {'A': 1 / 3, 'B': 1 / 3, 'C': 1 / 3}
+    prior_initial_state = {'(0, 0)': 1}
+
+    likelihood_dict = dict()
+    posteriors_history = dict()
+
+    for timestep in range(num_timesteps_trajectory - 1):
+        likelihood_dict[('A', '(0, 0)')] = likelihood_a_history[timestep]
+        likelihood_dict[('B', '(0, 0)')] = likelihood_b_history[timestep]
+        likelihood_dict[('C', '(0, 0)')] = likelihood_c_history[timestep]
+
+        print(likelihood_a_history[timestep])
+        print(likelihood_dict)
+
+        posteriors_history[timestep + 1] = getPosterior(prior_goals, prior_initial_state, likelihood_dict)
+        print('Posterior')
+        print(getPosterior(prior_goals, prior_initial_state, likelihood_dict))
+
+    print(posteriors_history)
+    return posteriors_history
+
+
+def plot_posterior_of_trajectory(posteriors_history):
+    timestep = list(posteriors_history)
+    num_timesteps = len(timestep)
+
+    print(timestep)
+
+
+
+
+
+
+# TODO: remove this
 def get_likelihood_part_path_sequence(observed_sequence, marginal_probability_next_state, t=2):
 
     P_prev = 1
@@ -303,10 +352,10 @@ def main():
     delta = stop_time - start_time
     print("--- %s milliseconds ---" % (int(delta.total_seconds() * 1000)))
 
-    like, like_hist = get_likelihood_entire_path_sequence(trajectoryToGoalC, marginal_probability_next_state_a_env1)
+    like, like_hist_a = get_likelihood_entire_path_sequence(trajectoryToGoalC, marginal_probability_next_state_a_env1)
 
     print(like)
-    print(like_hist)
+    print(like_hist_a)
 
     like, like_hist = get_likelihood_entire_path_sequence(trajectoryToGoalC, marginal_probability_next_state_b_env1)
 
@@ -317,6 +366,12 @@ def main():
 
     print(like)
     print(like_hist)
+
+    posteriors_history_goal_c = get_posterior_of_trajectory(
+        trajectoryToGoalC, marginal_probability_next_state_a_env1,
+        marginal_probability_next_state_b_env1, marginal_probability_next_state_c_env1)
+
+    plot_posterior_of_trajectory(posteriors_history_goal_c)
 
 if __name__ == '__main__':
     main()
