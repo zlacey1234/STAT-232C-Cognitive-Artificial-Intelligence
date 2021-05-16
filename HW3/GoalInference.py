@@ -157,12 +157,12 @@ def get_probability_of_individual_state_transitions(transition_table, policy_tab
 
 def get_likelihood_entire_path_sequence(observed_sequence, marginal_probability_next_state):
 
-    num_timesteps_trajectory = len(observed_sequence)
+    num_time_steps_trajectory = len(observed_sequence)
 
-    print(num_timesteps_trajectory)
+    print(num_time_steps_trajectory)
 
     likelihood_sequence, likelihood_sequence_history = get_likelihood_part_of_path_sequence(
-        observed_sequence, marginal_probability_next_state, t=(num_timesteps_trajectory - 1))
+        observed_sequence, marginal_probability_next_state, t=(num_time_steps_trajectory - 1))
 
     return likelihood_sequence, likelihood_sequence_history
 
@@ -188,7 +188,7 @@ def get_likelihood_part_of_path_sequence(observed_sequence, marginal_probability
 
 def get_posterior_of_trajectory(observed_sequence, marginal_probability_next_state_tables):
 
-    num_timesteps_trajectory = len(observed_sequence)
+    num_time_steps_trajectory = len(observed_sequence)
     num_possible_goals = len(marginal_probability_next_state_tables)
 
     print('Num Goals')
@@ -215,41 +215,55 @@ def get_posterior_of_trajectory(observed_sequence, marginal_probability_next_sta
     likelihood_dict = dict()
     posteriors_history = dict()
 
-    for timestep in range(num_timesteps_trajectory - 1):
+    for time_step in range(num_time_steps_trajectory - 1):
         for goal_idx in range(num_possible_goals):
-            likelihood_dict[(goal_strings[goal_idx], '(0, 0)')] = likelihood_history_list[goal_idx][timestep]
+            likelihood_dict[(goal_strings[goal_idx], '(0, 0)')] = likelihood_history_list[goal_idx][time_step]
 
         print('dict')
         print(likelihood_dict)
 
-        posteriors_history[timestep + 1] = getPosterior(prior_goals, prior_initial_state, likelihood_dict)
+        posteriors_history[time_step + 1] = getPosterior(prior_goals, prior_initial_state, likelihood_dict)
+    print('Post')
     print(posteriors_history)
-    return posteriors_history, num_possible_goals
+    return posteriors_history, num_possible_goals, goal_strings
 
 
-def plot_posterior_of_trajectory(posteriors_history):
-    timestep = list(posteriors_history)
-    num_timesteps = len(timestep)
+def plot_posterior_of_trajectory(posteriors_history, num_possible_goals, goal_strings,
+                                 title_goal_string='Goal: Default', title_environment_string='Environment: Default'):
+    time_step = list(posteriors_history)
+    num_time_steps = len(time_step)
 
-    print(timestep)
+    print(time_step)
 
-    for t in range(num_timesteps):
+    posteriors_goals_matrix = np.zeros((num_possible_goals, num_time_steps))
 
-        posterior_goal_dict = list(posteriors_history[timestep[t]][0])
+    for t in range(num_time_steps):
+
+        posterior_goal_dict = list(posteriors_history[time_step[t]][0])
         print(posterior_goal_dict)
-        num_goals = len(posterior_goal_dict)
-        print(num_goals)
 
         summ = 0
 
-        for goal in range(num_goals):
-            print(posteriors_history[timestep[t]][0][posterior_goal_dict[goal]])
-            summ += posteriors_history[timestep[t]][0][posterior_goal_dict[goal]]
+        for goal_idx in range(num_possible_goals):
+            print(posteriors_history[time_step[t]][0][posterior_goal_dict[goal_idx]])
+            summ += posteriors_history[time_step[t]][0][posterior_goal_dict[goal_idx]]
+
+            posteriors_goals_matrix[goal_idx][t] = posteriors_history[time_step[t]][0][posterior_goal_dict[goal_idx]]
 
         print(summ)
 
+    print(posteriors_goals_matrix)
+    for goal_idx in range(num_possible_goals):
+        plt.plot(time_step, posteriors_goals_matrix[goal_idx][:], label='Posterior Probability of Goal: '
+                                                                       + goal_strings[goal_idx])
 
+    plt.title('Posterior of Goals Given the Observed Trajectory to ' + title_goal_string
+              + ' in ' + title_environment_string)
+    plt.xlabel('Time Step [ t ]')
+    plt.ylabel('Posterior Probabilities of Goals [ P(Goal | Actions, Environment) ]')
 
+    plt.legend()
+    plt.show()
 
 
 
@@ -261,15 +275,15 @@ def get_likelihood_part_path_sequence(observed_sequence, marginal_probability_ne
 
     P_prev = 1
 
-    for timestep in range(t):
-        print('timestep')
+    for time_step in range(t):
+        print('time_step')
         print(observed_sequence)
-        print(timestep)
-        print(observed_sequence[timestep])
+        print(time_step)
+        print(observed_sequence[time_step])
         print('\n')
 
-        current_trajectory_state = observed_sequence[timestep]
-        next_trajectory_state = observed_sequence[timestep + 1]
+        current_trajectory_state = observed_sequence[time_step]
+        next_trajectory_state = observed_sequence[time_step + 1]
 
         P = marginal_probability_next_state[current_trajectory_state][next_trajectory_state] * P_prev
 
@@ -317,6 +331,8 @@ def main():
     gridHeight = 6
     trapStates = [(3,0), (3,1), (3,2), (3,3)]
 
+    trapStatesGap = [(3, 0), (3, 2), (3, 3)]
+
     gamma = .95
     beta = .4
     convergence_tolerance = 10e-7
@@ -336,18 +352,18 @@ def main():
                                                          convergence_tolerance, gamma, use_softmax=True,
                                                          use_noise=True, noise_beta=beta)
     optimal_value_table_a_env1, optimal_policy_table_a_env1 = perform_value_iteration_goal_a_env1()
-    #
-    # visualizeValueTable(gridWidth, gridHeight, goalStates[2], trapStates, optimal_value_table_a_env1)
-    # visualizePolicy(gridWidth, gridHeight, goalStates[2], trapStates, optimal_policy_table_a_env1)
+
+    visualizeValueTable(gridWidth, gridHeight, goalStates[2], trapStates, optimal_value_table_a_env1)
+    visualizePolicy(gridWidth, gridHeight, goalStates[2], trapStates, optimal_policy_table_a_env1)
 
     # Goal B
     perform_value_iteration_goal_b_env1 = ValueIteration(transition, rewardB, value_table_initial,
                                                          convergence_tolerance, gamma, use_softmax=True,
                                                          use_noise=True, noise_beta=beta)
     optimal_value_table_b_env1, optimal_policy_table_b_env1 = perform_value_iteration_goal_b_env1()
-    #
-    # visualizeValueTable(gridWidth, gridHeight, goalStates[0], trapStates, optimal_value_table_b_env1)
-    # visualizePolicy(gridWidth, gridHeight, goalStates[0], trapStates, optimal_policy_table_b_env1)
+
+    visualizeValueTable(gridWidth, gridHeight, goalStates[0], trapStates, optimal_value_table_b_env1)
+    visualizePolicy(gridWidth, gridHeight, goalStates[0], trapStates, optimal_policy_table_b_env1)
 
     # Goal C
     perform_value_iteration_goal_c_env1 = ValueIteration(transition, rewardC, value_table_initial,
@@ -358,7 +374,7 @@ def main():
     visualizeValueTable(gridWidth, gridHeight, goalStates[1], trapStates, optimal_value_table_c_env1)
     visualizePolicy(gridWidth, gridHeight, goalStates[1], trapStates, optimal_policy_table_c_env1)
 
-    print(optimal_policy_table_c_env1)
+    # Calculating the Marginal Probability Tables for Each Goal in Environment #1
     marginal_probability_next_state_a_env1 = get_probability_of_individual_state_transitions(
         transition, optimal_policy_table_a_env1)
 
@@ -368,39 +384,87 @@ def main():
     marginal_probability_next_state_c_env1 = get_probability_of_individual_state_transitions(
         transition, optimal_policy_table_c_env1)
 
-    start_time = datetime.datetime.now()
-    get_likelihood_part_path_sequence(trajectoryToGoalC, marginal_probability_next_state_c_env1)
-    stop_time = datetime.datetime.now()
+    marginal_probability_next_state_table_env1 = [marginal_probability_next_state_a_env1,
+                                                  marginal_probability_next_state_b_env1,
+                                                  marginal_probability_next_state_c_env1]
 
-    delta = stop_time - start_time
-    print("--- %s milliseconds ---" % (int(delta.total_seconds() * 1000)))
+    posteriors_history_goal_a_env1, num_possible_goals, goal_strings = get_posterior_of_trajectory(
+        trajectoryToGoalA, marginal_probability_next_state_table_env1)
 
-    like, like_hist_a = get_likelihood_entire_path_sequence(trajectoryToGoalC, marginal_probability_next_state_a_env1)
+    posteriors_history_goal_b_env1, num_possible_goals, goal_strings = get_posterior_of_trajectory(
+        trajectoryToGoalB, marginal_probability_next_state_table_env1)
 
-    print(like)
-    print(like_hist_a)
+    posteriors_history_goal_c_env1, num_possible_goals, goal_strings = get_posterior_of_trajectory(
+        trajectoryToGoalC, marginal_probability_next_state_table_env1)
 
-    like, like_hist = get_likelihood_entire_path_sequence(trajectoryToGoalC, marginal_probability_next_state_b_env1)
+    plot_posterior_of_trajectory(posteriors_history_goal_a_env1, num_possible_goals, goal_strings,
+                                 title_goal_string='Goal: A,', title_environment_string='Environment: #1')
 
-    print(like)
-    print(like_hist)
+    plot_posterior_of_trajectory(posteriors_history_goal_b_env1, num_possible_goals, goal_strings,
+                                 title_goal_string='Goal: B,', title_environment_string='Environment: #1')
 
-    like, like_hist = get_likelihood_entire_path_sequence(trajectoryToGoalC, marginal_probability_next_state_c_env1)
+    plot_posterior_of_trajectory(posteriors_history_goal_c_env1, num_possible_goals, goal_strings,
+                                 title_goal_string='Goal: C,', title_environment_string='Environment: #1')
 
-    print(like)
-    print(like_hist)
+    # Environment #2
+    # Goal A
+    perform_value_iteration_goal_a_env2 = ValueIteration(transition, rewardAGap, value_table_initial,
+                                                         convergence_tolerance, gamma, use_softmax=True,
+                                                         use_noise=True, noise_beta=beta)
+    optimal_value_table_a_env2, optimal_policy_table_a_env2 = perform_value_iteration_goal_a_env2()
 
-    marginal_probability_next_state_table = [marginal_probability_next_state_a_env1,
-                                             marginal_probability_next_state_b_env1,
-                                             marginal_probability_next_state_c_env1]
+    visualizeValueTable(gridWidth, gridHeight, goalStates[2], trapStatesGap, optimal_value_table_a_env2)
+    visualizePolicy(gridWidth, gridHeight, goalStates[2], trapStatesGap, optimal_policy_table_a_env2)
 
-    posteriors_history_goal_c, num_possible_goals = get_posterior_of_trajectory(
-        trajectoryToGoalC, marginal_probability_next_state_table)
-    # posteriors_history_goal_c = get_posterior_of_trajectory(
-    #     trajectoryToGoalC, marginal_probability_next_state_a_env1,
-    #     marginal_probability_next_state_b_env1, marginal_probability_next_state_c_env1)
+    # Goal B
+    perform_value_iteration_goal_b_env2 = ValueIteration(transition, rewardBGap, value_table_initial,
+                                                         convergence_tolerance, gamma, use_softmax=True,
+                                                         use_noise=True, noise_beta=beta)
+    optimal_value_table_b_env2, optimal_policy_table_b_env2 = perform_value_iteration_goal_b_env2()
 
-    plot_posterior_of_trajectory(posteriors_history_goal_c)
+    visualizeValueTable(gridWidth, gridHeight, goalStates[0], trapStatesGap, optimal_value_table_b_env2)
+    visualizePolicy(gridWidth, gridHeight, goalStates[0], trapStatesGap, optimal_policy_table_b_env2)
+
+    # Goal C
+    perform_value_iteration_goal_c_env2 = ValueIteration(transition, rewardCGap, value_table_initial,
+                                                         convergence_tolerance, gamma, use_softmax=True,
+                                                         use_noise=True, noise_beta=beta)
+    optimal_value_table_c_env2, optimal_policy_table_c_env2 = perform_value_iteration_goal_c_env2()
+
+    visualizeValueTable(gridWidth, gridHeight, goalStates[1], trapStatesGap, optimal_value_table_c_env2)
+    visualizePolicy(gridWidth, gridHeight, goalStates[1], trapStatesGap, optimal_policy_table_c_env2)
+
+    # Calculating the Marginal Probability Tables for Each Goal in Environment #1
+    marginal_probability_next_state_a_env2 = get_probability_of_individual_state_transitions(
+        transition, optimal_policy_table_a_env2)
+
+    marginal_probability_next_state_b_env2 = get_probability_of_individual_state_transitions(
+        transition, optimal_policy_table_b_env2)
+
+    marginal_probability_next_state_c_env2 = get_probability_of_individual_state_transitions(
+        transition, optimal_policy_table_c_env2)
+
+    marginal_probability_next_state_table_env2 = [marginal_probability_next_state_a_env2,
+                                                  marginal_probability_next_state_b_env2,
+                                                  marginal_probability_next_state_c_env2]
+
+    posteriors_history_goal_a_env2, num_possible_goals, goal_strings = get_posterior_of_trajectory(
+        trajectoryToGoalA, marginal_probability_next_state_table_env2)
+
+    posteriors_history_goal_b_env2, num_possible_goals, goal_strings = get_posterior_of_trajectory(
+        trajectoryToGoalB, marginal_probability_next_state_table_env2)
+
+    posteriors_history_goal_c_env2, num_possible_goals, goal_strings = get_posterior_of_trajectory(
+        trajectoryToGoalC, marginal_probability_next_state_table_env2)
+
+    plot_posterior_of_trajectory(posteriors_history_goal_a_env2, num_possible_goals, goal_strings,
+                                 title_goal_string='Goal: A,', title_environment_string='Environment: #2')
+
+    plot_posterior_of_trajectory(posteriors_history_goal_b_env2, num_possible_goals, goal_strings,
+                                 title_goal_string='Goal: B,', title_environment_string='Environment: #2')
+
+    plot_posterior_of_trajectory(posteriors_history_goal_c_env2, num_possible_goals, goal_strings,
+                                 title_goal_string='Goal: C,', title_environment_string='Environment: #2')
 
 if __name__ == '__main__':
     main()
