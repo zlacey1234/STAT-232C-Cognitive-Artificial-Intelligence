@@ -126,37 +126,40 @@ def get_probability_of_individual_state_transitions(transition_table, policy_tab
     states = list(transition_table)
     num_states = len(states)
 
+    # Dictionary to store Marginal Probabilities of the Next State given the Current State, Goal and Environment
     marginal_probability_next_state = dict()
 
+    # For each state
     for s in range(num_states):
         actions = list(transition_table[states[s]])
         num_actions = len(actions)
 
-        p_state = dict()
         probability_next_state = dict()
         possible_next_states = []
 
+        # For each action
         for a in range(num_actions):
 
             state_prime = list(transition_table[states[s]][actions[a]])
             num_states_prime = len(state_prime)
 
+            # For each next-state
             for sp in range(num_states_prime):
-
+                # If Next State is in the list of possible next states
                 if state_prime[sp] in possible_next_states:
-                    p_state[state_prime[sp]] = transition_table[states[s]][actions[a]][state_prime[sp]] \
-                                               + p_state[state_prime[sp]]
-
+                    # Accumulation of repeated next state probabilities
                     probability_next_state[state_prime[sp]] = \
                         transition_table[states[s]][actions[a]][state_prime[sp]] * policy_table[states[s]][actions[a]] \
                         + probability_next_state[state_prime[sp]]
 
                 else:
+                    # Add this to the list of possible next states
                     possible_next_states.append(state_prime[sp])
-                    p_state[state_prime[sp]] = transition_table[states[s]][actions[a]][state_prime[sp]]
+
                     probability_next_state[state_prime[sp]] = \
                         transition_table[states[s]][actions[a]][state_prime[sp]] * policy_table[states[s]][actions[a]]
 
+        # Store in the (Marginal Probabilities of the Next State) Dictionary
         marginal_probability_next_state[states[s]] = probability_next_state
 
     return marginal_probability_next_state
@@ -236,20 +239,27 @@ def get_likelihood_part_of_path_sequence(observed_sequence, marginal_probability
             likelhood_history = [likelihood([t=1]), likelihood([t=2]), likelihood([t=3]), ..., likelihood([t=T-1])]
 
     """
+    # Terminating Condition in the Recursive Function
     if t == 1:
         initial_trajectory_state = observed_sequence[0]
         next_trajectory_state = observed_sequence[1]
+
         likelihood = marginal_probability_next_state[initial_trajectory_state][next_trajectory_state]
         likelihood_history = [likelihood]
+
         return likelihood, likelihood_history
     else:
         current_trajectory_state = observed_sequence[t - 1]
         next_trajectory_state = observed_sequence[t]
+
         likelihood_prev, likelihood_history_prev = get_likelihood_part_of_path_sequence(
             observed_sequence, marginal_probability_next_state, (t - 1))
+
+        # Update (via multiplication of probabilities (sequences))
         likelihood = marginal_probability_next_state[current_trajectory_state][next_trajectory_state] * likelihood_prev
         likelihood_history_prev.append(likelihood)
         likelihood_history = likelihood_history_prev
+
         return likelihood, likelihood_history
 
 
@@ -311,8 +321,10 @@ def get_posterior_of_trajectory(observed_sequence, marginal_probability_next_sta
     for goal_idx in range(num_possible_goals):
         goal_strings.append(chr(ord('A') + goal_idx))
 
+        # Uniform Prior Distribution of Goals. P(g)
         prior_goals[goal_strings[goal_idx]] = 1 / num_possible_goals
 
+        # Get the Likelihood History of the Trajectory Sequence
         likelihood_final, likelihood_history = get_likelihood_entire_path_sequence(
                 observed_sequence, marginal_probability_next_state_tables[goal_idx])
 
@@ -321,13 +333,18 @@ def get_posterior_of_trajectory(observed_sequence, marginal_probability_next_sta
     likelihood_dict = dict()
     posteriors_history = dict()
 
+    # For each time step
     for time_step in range(num_time_steps_trajectory - 1):
+        # For each goal
         for goal_idx in range(num_possible_goals):
             likelihood_dict[(goal_strings[goal_idx], '(0, 0)')] = likelihood_history_list[goal_idx][time_step]
 
+        # Get the Posterior Probability
         posteriors_history[time_step + 1] = getPosterior(prior_goals, prior_initial_state, likelihood_dict)
+
     print('Posteriors')
     print(posteriors_history)
+
     return posteriors_history, num_possible_goals, goal_strings
 
 
