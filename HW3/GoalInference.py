@@ -375,7 +375,7 @@ def plot_posterior_of_trajectory(posteriors_history, num_possible_goals, goal_st
         to specify the Goal in the plot title.
 
         title_environment_string (datatype: string) [optional] (default value: 'Environment: Default'): This string
-        allows the user to specify the Enveironment in the plot title.
+        allows the user to specify the Environment in the plot title.
 
     """
     time_step = list(posteriors_history)
@@ -451,6 +451,8 @@ def main():
                                                          convergence_tolerance, gamma, use_softmax=True,
                                                          use_noise=True, noise_beta=beta)
     optimal_value_table_a_env1, optimal_policy_table_a_env1 = perform_value_iteration_goal_a_env1()
+
+    print(optimal_policy_table_a_env1)
 
     visualizeValueTable(gridWidth, gridHeight, goalStates[2], trapStates, optimal_value_table_a_env1)
     visualizePolicy(gridWidth, gridHeight, goalStates[2], trapStates, optimal_policy_table_a_env1)
