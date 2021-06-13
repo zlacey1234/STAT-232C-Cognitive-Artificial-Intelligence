@@ -18,26 +18,27 @@ def get_posterior(prior_of_a, prior_of_b, likelihood):
 
     Args:
         prior_of_a: This is a Probability Mass Function (PMF). This variable is a dictionary that holds all the possible
-                    outcomes in A and the values are their prior probabilities. P(A)
+
+        outcomes in A and the values are their prior probabilities. P(A)
 
         prior_of_b: This is a Probability Mass Function (PMF). This variable is a dictionary that holds all the possible
-                    outcomes in B and the values are their prior probabilities. P(B)
+        outcomes in B and the values are their prior probabilities. P(B)
 
         likelihood: This is the likelihood that the outcome of A and the outcome of B occur. P(D | A, B)
     Returns:
         marginal_of_a: This is a Probability Mass Function (PMF). This variable is a dictionary that holds all the
-                       possible marginal posterior probabilities for each outcome of A. Marginal means that we want to
-                       consider the posterior of the outcomes of parameter A separately from the outcomes of parameter
-                       B. From this, we must perform the summation of P(A, B | D) across all possible outcomes of
-                       parameter B to determine the marginal posterior of the outcomes of parameter A.
+        possible marginal posterior probabilities for each outcome of A. Marginal means that we want to consider the
+        posterior of the outcomes of parameter A separately from the outcomes of parameter B. From this, we must perform
+        the summation of P(A, B | D) across all possible outcomes of parameter B to determine the marginal posterior of
+        the outcomes of parameter A.
 
             P(A | D) = sum( P(A, B | D) )dB
 
         marginal_of_b: This os a Probability Mass Function (PMF). This variable is a dictionary that holds all the
-                     possible marginal posterior probabilities for each outcome of B. Marginal means that we want to
-                     consider the posterior of the outcomes of parameter B separately from the outcomes of parameter A.
-                     From this, we must perform the summation of P(A, B | D) across all possible outcomes of parameter
-                     A to determine the marginal posterior of the outcomes of parameter B.
+        possible marginal posterior probabilities for each outcome of B. Marginal means that we want to consider the
+        posterior of the outcomes of parameter B separately from the outcomes of parameter A. From this, we must perform
+        the summation of P(A, B | D) across all possible outcomes of parameter A to determine the marginal posterior of
+        the outcomes of parameter B.
 
             P(B | D) = sum( P(A, B | D) )dA
 

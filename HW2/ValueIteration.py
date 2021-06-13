@@ -3,9 +3,11 @@
 
 This program performs Value Iteration
 
-Course: STAT 232C: Cognitive Artificial Intelligence
-Author: Zachary Lacey
+Class: STAT 232C - Cognitive Artificial Intelligence
+Project 2: Value Iteration
+Name: Zachary Lacey
 Date: April 14th, 2021
+
 """
 
 __author__ = 'Zachary Lacey'
@@ -17,9 +19,8 @@ import time
 class ValueIteration(object):
     """ A ValueIteration Class """
 
-    def __init__(
-            self, transition_table, reward_table, value_table, convergence_tolerance, gamma,
-            use_terminal_state_mode=False, terminal_states_table=None, max_iter=-1):
+    def __init__(self, transition_table, reward_table, value_table, convergence_tolerance, gamma=1.0, use_softmax=False,
+                 use_noise=False, noise_beta=0.0, use_terminal_state_mode=False, terminal_states_table=None, max_iter=-1):
         """
         Args:
             transition_table (datatype: dict): This is a nested dictionary of the state-action-nextstate combinations
@@ -29,7 +30,6 @@ class ValueIteration(object):
 
                 Example:
                 {(0, 0): {(1, 0): {(1, 0): 0.7, (0, 1): 0.2, (0, 0): 0.1}}
-
                 {state (0, 0) : action (1, 0):
                     nextstate (1, 0) [move right]: probability 0.7
                     nextstate (0, 1) [move up]: probability 0.2
@@ -45,10 +45,18 @@ class ValueIteration(object):
 
                 value_table = {state: {value}} == V(s)
 
-            convergence_tolerance:
+            convergence_tolerance (datatype: float): A small scalar threshold determining how much error is tolerated
+            in the estimation.
 
-            gamma:
+            gamma (datatype: float): Discount factor
 
+            use_softmax (datatype: boolean): This is a boolean flag that the user can specify if they want to solve the
+            Policy via the Boltzmann Policy (Softmax) rather than by using the Argmax approach.
+            
+            use_noise (datatype: boolean):
+            
+            noise_beta:
+            
             use_terminal_state_mode (datatype: boolean): This allows the user to specify is there are terminal states.
             This is useful if terminal states exist since the Value of Terminal States are set to zero.
 
@@ -67,6 +75,10 @@ class ValueIteration(object):
         self.convergence_tolerance = convergence_tolerance
         self.gamma = gamma
 
+        self.use_softmax = use_softmax
+        self.use_noise = use_noise
+        self.noise_beta = noise_beta
+        
         self.use_terminal_state_mode = use_terminal_state_mode
         self.terminal_states_table = terminal_states_table
         self.max_iter = max_iter
@@ -89,13 +101,7 @@ class ValueIteration(object):
         iteration = 0
         state_values_init = self.value_table.copy()
 
-        start_time = time.time()
         state_values, policy_table, iteration = ValueIteration.value_iteration(self, state_values_init, iteration)
-
-        print("--- %s seconds ---" % (time.time() - start_time))
-
-        print('Iterations:')
-        print(iteration)
 
         return [state_values, policy_table]
 
@@ -108,7 +114,7 @@ class ValueIteration(object):
         Args:
             state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
             state-values of the optimal policy. All state values are initialized to zero. This input is the initialized
-            stat-values structure with initialized zeros. The state_values has the following structure:
+            state-values structure with initialized zeros. The state_values has the following structure:
 
                 state_values = {state: {value}} == V(s)
 
@@ -116,8 +122,7 @@ class ValueIteration(object):
 
         Returns:
             state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
-            state-values of the optimal policy. All state values are initialized to zero. The state_values has the
-            following structure:
+            state-values of the optimal policy. The state_values has the following structure:
 
                 state_values = {state: {value}} == V(s)
 
@@ -141,7 +146,7 @@ class ValueIteration(object):
 
             states = list(self.transition_table)
             num_states = len(states)
-
+            
             terminal_states = None
 
             if self.use_terminal_state_mode:
@@ -162,7 +167,7 @@ class ValueIteration(object):
                 for a in range(num_actions):
                     state_prime = list(self.transition_table[states[s]][actions[a]])
                     num_states_prime = len(state_prime)
-
+                    
                     # If there are any Terminal States
                     if self.use_terminal_state_mode:
                         if states[s] in terminal_states:
@@ -188,7 +193,7 @@ class ValueIteration(object):
                 delta = max(delta, abs(value_scalar - state_values[states[s]]))
 
             iteration += 1
-
+            
             if self.max_iter != -1:
                 if iteration >= self.max_iter:
                     break
@@ -197,6 +202,8 @@ class ValueIteration(object):
                 break
 
         policy_table = ValueIteration.optimal_policy(self, state_action_value_mem)
+
+        state_values = ValueIteration.optimal_value(self, policy_table, state_action_value_mem)
 
         return [state_values, policy_table, iteration]
 
@@ -231,25 +238,79 @@ class ValueIteration(object):
             for a in range(num_actions):
                 state_value_sum_per_action[a] = state_action_value_mem[states[s]][actions[a]]
 
-            max_state_value = np.max(state_value_sum_per_action)
-            max_state_idx = np.argwhere(state_value_sum_per_action.flatten() == max_state_value)
-            num_max_values = len(max_state_idx)
+            if self.use_softmax:
+                softmax_policy_actions = dict()
+                policy_actions_table = np.zeros((num_actions, 1))
+                for a in range(num_actions):
+                    policy_actions_table[a] = np.exp(self.noise_beta * state_action_value_mem[states[s]][actions[a]])
+                    softmax_policy_actions[actions[a]] = policy_actions_table[a][0]
 
-            max_actions = dict()
-            for a in range(num_actions):
-                if a in max_state_idx:
-                    max_actions[actions[a]] = 1.0 / num_max_values
+                policy_actions_sum = np.sum(policy_actions_table)
 
-            policy_table[states[s]] = max_actions
+                for a in range(num_actions):
+                    softmax_policy_actions[actions[a]] /= policy_actions_sum
+
+                policy_table[states[s]] = softmax_policy_actions
+
+            else:
+                max_state_value = np.max(state_value_sum_per_action)
+                max_state_idx = np.argwhere(state_value_sum_per_action.flatten() == max_state_value)
+                num_max_values = len(max_state_idx)
+
+                max_actions = dict()
+                for a in range(num_actions):
+                    if a in max_state_idx:
+                        max_actions[actions[a]] = 1.0 / num_max_values
+
+                policy_table[states[s]] = max_actions
 
         return policy_table
 
+    def optimal_value(self, optimal_policy, state_action_value_mem):
+        """ Optimal Value Method
 
-def viewDictionaryStructure(d, levels, indent=0):
+        This method calculates the optimal state-value based on the optimal policy.
+
+        Args:
+            optimal_policy (datatype: dict): This is a nested dictionary of form state-action-probability giving the
+            approximate optimal policy of an agent.
+
+                optimal_policy = {state: {action: {probability}}} == pi(a | s)
+
+            state_action_value_mem (datatype: dict): This is a nested dictionary of form state-action-value which
+            contains the stored state-action values (aka, Q-Values) for the optimal policy. The state_action_value_mem
+            has the following structure:
+
+                state_action_value_mem = {state: {action: {value}}} == Q(s, a)
+
+        Returns:
+            state_values (datatype: dict): This is a nested dictionary of form state-value that specifies the
+            state-values of the optimal policy. The state_values has the following structure:
+
+                state_values = {state: {value}} == V(s)
+
+        """
+        states = list(self.transition_table)
+        num_states = len(states)
+
+        state_values = dict()
+
+        # For each state
+        for s in range(num_states):
+            actions = list(optimal_policy[states[s]])
+            num_actions = len(actions)
+
+            state_values[states[s]] = np.sum([optimal_policy[states[s]][actions[a]]
+                                              * state_action_value_mem[states[s]][actions[a]]
+                                              for a in range(num_actions)])
+        return state_values
+
+
+def view_dictionary_structure(d, levels, indent=0):
     for key, value in d.items():
         print('\t' * indent + str(levels[indent]) + ": " + str(key))
         if isinstance(value, dict):
-            viewDictionaryStructure(value, levels, indent + 1)
+            view_dictionary_structure(value, levels, indent + 1)
         else:
             print('\t' * (indent + 1) + str(levels[indent + 1]) + ": " + str(value))
 
@@ -301,9 +362,6 @@ def main():
         (0, 0): 0, (0, 1): 0, (0, 2): 0, (0, 3): 0, (0, 4): 0,
         (1, 0): 0, (1, 1): 0, (1, 2): 0, (1, 3): 0, (1, 4): 0,
         (2, 0): 0, (2, 1): 0, (2, 2): 0, (2, 3): 0, (2, 4): 0}
-
-    # convergence_tolerance = 10e-7
-    # gamma = .9
 
     """
     Example 2: Probabilistic Transition
@@ -481,21 +539,19 @@ def main():
     convergence_tolerance = 10e-7
     gamma = .9
 
-    # """
-    # Uncomment to view transition or reward structure in a readable format
-    # """
-    # levelsReward  = ["state", "action", "next state", "reward"]
-    # levelsTransition  = ["state", "action", "next state", "probability"]
-    #
-    # viewDictionaryStructure(transition_table_det, levelsTransition)
-    # print('================================')
-    # viewDictionaryStructure(transition_table, levelsTransition)
-    # # viewDictionaryStructure(reward_table_det, levelsReward)
-    #
+    """
+        Uncomment to view transition or reward structure in a readable format
 
-    perform_value_iteration = ValueIteration(
-        transition_table_det, reward_table_det, value_table_det, convergence_tolerance, gamma)
-    optimal_values_determinsitic, policy_table_det = perform_value_iteration()
+        levelsReward  = ["state", "action", "next state", "reward"]
+        levelsTransition  = ["state", "action", "next state", "probability"]
+
+        view_dictionary_structure(transition, levelsTransition)
+        view_dictionary_structure(reward, levelsReward)
+    """
+
+    perform_value_iteration = ValueIteration(transition_table_det, reward_table_det, value_table_det,
+                                             convergence_tolerance, gamma)
+    optimal_values_deterministic, policy_table_det = perform_value_iteration()
     print('Example 1: Deterministic Transition\n')
     print('Optimal Values (Deterministic)')
     print(optimal_values_determinsitic)
