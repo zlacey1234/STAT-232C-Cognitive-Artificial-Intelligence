@@ -56,11 +56,18 @@ class GetLikelihoodReward(object):
 
                     Goal C: (1, 5)
 
-            originalReward:
+            originalReward (datatype: dict): This is a nested dictionary of form state-action-nextstate combinations
+            for the original expected reward. The original_reward has the following structure:
+
+                original_reward = {state: {action: {nextstate: {reward}}}} == R(s' | s, a)
+
             alpha:
 
         Returns:
-            newReward
+            newReward (datatype: dict): This is a nested dictionary of form state-action-nextstate combinations
+            for the new signaling expected reward. The new_reward has the following structure:
+
+                new_reward = {state: {action: {nextstate: {reward}}}} == R(s' | s, a)
 
         """
         # Possible Goal States
@@ -100,24 +107,13 @@ class GetLikelihoodReward(object):
 
                 for sp in range(num_states_prime):
                     o_r = originalReward[states[s]][actions[a]][state_prime[sp]]
-                    print('original reward')
-                    print(o_r)
-
-                    print('ratio')
-                    print(likelihood_ratio_true_goal[states[s]][state_prime[sp]])
-
-                    print('new reward')
 
                     n_r = o_r + alpha*(likelihood_ratio_true_goal[states[s]][state_prime[sp]])
-                    print(n_r)
-                    new_reward_state_primes[state_prime[sp]] = n_r
-                    print('\n')
 
-                print(new_reward_state_primes)
+                    new_reward_state_primes[state_prime[sp]] = n_r
+
                 new_reward_actions[actions[a]] = new_reward_state_primes
 
-            print('new reward (actions)')
-            print(new_reward_actions)
             newReward[states[s]] = new_reward_actions
 
         
@@ -156,10 +152,8 @@ class GetLikelihoodReward(object):
         sum_of_marginal_probabilities_states_mem = dict()
         likelihood_ratio = dict()
         for s in range(num_states):
-            print(states[s])
             state_prime = list(marginal_probability_next_state_tables[true_goal][states[s]])
             num_states_prime = len(state_prime)
-            print(state_prime)
             sum_of_marginal_probabilities_states_primes_mem = dict()
             likelihood_ratio_state_prime_mem = dict()
             for sp in range(num_states_prime):
@@ -171,23 +165,10 @@ class GetLikelihoodReward(object):
                     marginal_probability_next_state_tables[true_goal][states[s]][state_prime[sp]] / \
                     sum_of_marginal_probabilities_states_primes_mem[state_prime[sp]]
 
-            print('state prime sum')
-            print(sum_of_marginal_probabilities_states_primes_mem)
-            print(likelihood_ratio_state_prime_mem)
-
             sum_of_marginal_probabilities_states_mem[states[s]] = sum_of_marginal_probabilities_states_primes_mem
             likelihood_ratio[states[s]] = likelihood_ratio_state_prime_mem
 
-        print('state sum')
-        print(sum_of_marginal_probabilities_states_mem)
-        print(likelihood_ratio)
-        print('\n\n')
-
         return likelihood_ratio
-
-
-
-
 
 def visualizeValueTable(gridWidth, gridHeight, goalState, trapStates, valueTable):
     gridAdjust = .5
@@ -360,24 +341,6 @@ def main():
 
     visualizeValueTable(gridWidth, gridHeight, goalC, trapStates, optimal_value_table_c_new)
     visualizePolicy(gridWidth, gridHeight, goalC, trapStates, optimal_policy_table_c_new)
-
-    # # Calculating the Marginal Probability Tables for Each Goal in Environment
-    # marginal_probability_next_state_a_original = get_probability_of_individual_state_transitions(
-    #     transition, optimal_policy_table_a_original)
-    #
-    # marginal_probability_next_state_b_original = get_probability_of_individual_state_transitions(
-    #     transition, optimal_policy_table_b_original)
-    #
-    # marginal_probability_next_state_c_original = get_probability_of_individual_state_transitions(
-    #     transition, optimal_policy_table_c_original)
-    #
-    # # Marginal Probabilities of the Next State Tables (Combined into a single array)
-    # marginal_probability_next_state_tables_original = [marginal_probability_next_state_a_original,
-    #                                                    marginal_probability_next_state_b_original,
-    #                                                    marginal_probability_next_state_c_original]
-    #
-    # print('marginal original')
-    # print(marginal_probability_next_state_tables_original)
 
 
 if __name__=="__main__":
